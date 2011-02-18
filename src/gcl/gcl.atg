@@ -192,7 +192,12 @@ factor<^Expression result, SymbolTable scope>  (. result = null; .)
 relationalOperator<^RelationalOperator op>  (. op = null; .)
 =
 	"="  (. op = RelationalOperator.EQUAL; .)
-	| "#" (. op = RelationalOperator.NOT_EQUAL; .).
+	| "#" (. op = RelationalOperator.NOT_EQUAL; .)
+	| ">" (. op = RelationalOperator.GREATER; .)
+	| ">=" (. op = RelationalOperator.GREATER_OR_EQUAL; .)
+	| "<" (. op = RelationalOperator.LESS; .)
+	| "<=" (. op = RelationalOperator.LESS_OR_EQUAL; .) .
+	
 /*----------------------------------------------------------*/
 addOperator<^AddOperator op > (. op = null; .)
  =

@@ -129,6 +129,14 @@ final class RelationalOperator extends Operator {
 			"equal", JEQ);
 	public static final RelationalOperator NOT_EQUAL = new RelationalOperator(
 			"notequal", JNE);
+	public static final RelationalOperator GREATER = new RelationalOperator(
+			"greater", JGT);
+	public static final RelationalOperator GREATER_OR_EQUAL = new RelationalOperator(
+			"greaterorequal", JGE);
+	public static final RelationalOperator LESS = new RelationalOperator(
+			"less", JLT);
+	public static final RelationalOperator LESS_OR_EQUAL = new RelationalOperator(
+			"lessorequal", JLE);
 
 	private RelationalOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
