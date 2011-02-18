@@ -49,7 +49,11 @@ gcl
 /*----------------------------------------------------------*/
 module<SymbolTable scope> 
 = 
-	block<scope> "." .
+	"module" identifier
+		definitionPart<scope>
+	[ "private" (. SymbolTable privateScope = scope.openScope(false); .)
+		block<privateScope>
+	] "." .
 /*----------------------------------------------------------*/
 block<SymbolTable scope>
 =
