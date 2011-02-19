@@ -14,9 +14,9 @@ java -cp . gcl.GCLCompiler ../tests/test1_2 ../tests/results/test1_2list.txt
 java -cp . gcl.GCLCompiler ../tests/test2 ../tests/results/test2list.txt 
 ../sam3
 ../macc3  >../tests/results/test2.result
-#java -cp . gcl.GCLCompiler ../tests/test3 ../tests/results/test3list.txt 
-#../sam3
-#../macc3  >../tests/results/test3.result
+java -cp . gcl.GCLCompiler ../tests/test3 ../tests/results/test3list.txt 
+../sam3
+../macc3  >../tests/results/test3.result
 #java -cp . gcl.GCLCompiler ../tests/test4 ../tests/results/test4list.txt 
 #../sam3
 #../macc3  >../tests/results/test4.result

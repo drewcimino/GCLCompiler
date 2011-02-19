@@ -1136,6 +1136,14 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		codegen.freeTemp(expressionLocation);
 		return new VariableExpression(INTEGER_TYPE, reg, DIRECT); // temporary
 	}
+	
+	Expression negateBooleanExpression(final Expression booleanExpression){
+		int reg = codegen.loadRegister(new ConstantExpression(BOOLEAN_TYPE, 1));
+		Codegen.Location expressionLocation = codegen.buildOperands(booleanExpression);
+		codegen.gen2Address(IS, reg, expressionLocation);
+		codegen.freeTemp(expressionLocation);
+		return new VariableExpression(INTEGER_TYPE, reg, DIRECT); // temporary
+	}
 
 	/***************************************************************************
 	 * Generate code to multiply two integer expressions. Result in Register.
