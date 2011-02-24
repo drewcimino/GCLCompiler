@@ -171,6 +171,30 @@ final class MultiplyOperator extends Operator {
 }
 
 /**
+ * And operator &
+ */
+final class AndOperator extends Operator {
+	
+	public static final AndOperator AND = new AndOperator("and", BA);
+	
+	private AndOperator(final String op, final SamOp opcode) {
+		super(op, opcode);
+	}
+}
+
+/**
+ * Or operator |
+ */
+final class OrOperator extends Operator {
+	
+	public static final OrOperator OR = new OrOperator("or", BO);
+	
+	private OrOperator(final String op, final SamOp opcode) {
+		super(op, opcode);
+	}
+}
+
+/**
  * Root of the expression object hierarchy. Represent integer and boolean expressions.
  */
 abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
@@ -1137,6 +1161,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		return new VariableExpression(INTEGER_TYPE, reg, DIRECT); // temporary
 	}
 	
+	/***************************************************************************
+	 * Generate code to negate a boolean expression. Result in Register.
+	 * 
+	 * @param expression expression to be negated -must be boolean
+	 * @return result expression ~boolean (in register)
+	 **************************************************************************/
 	Expression negateBooleanExpression(final Expression booleanExpression){
 		int reg = codegen.loadRegister(new ConstantExpression(BOOLEAN_TYPE, 1));
 		Codegen.Location expressionLocation = codegen.buildOperands(booleanExpression);
@@ -1160,6 +1190,38 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		codegen.gen2Address(op.opcode(), reg, rightLocation);
 		codegen.freeTemp(rightLocation);
 		return new VariableExpression(INTEGER_TYPE, reg, DIRECT); // temporary
+	}
+	
+	/***************************************************************************
+	 * Generate code to add two boolean expressions. Result in Register.
+	 * 
+	 * @param left an expression (lhs)Must be boolean
+	 * @param right an expression (rhs)Must be boolean
+	 * @return result expression -boolean (in register)
+	 **************************************************************************/
+	Expression andExpression(final Expression left, final Expression right) {
+		Operator op = AndOperator.AND;
+		int reg = codegen.loadRegister(left);
+		Codegen.Location rightLocation = codegen.buildOperands(right);
+		codegen.gen2Address(op.opcode(), reg, rightLocation);
+		codegen.freeTemp(rightLocation);
+		return new VariableExpression(BOOLEAN_TYPE, reg, DIRECT); // temporary
+	}
+	
+	/***************************************************************************
+	 * Generate code to or two boolean expressions. Result in Register.
+	 * 
+	 * @param left an expression (lhs)Must be boolean
+	 * @param right an expression (rhs)Must be boolean
+	 * @return result expression -boolean (in register)
+	 **************************************************************************/
+	Expression orExpression(final Expression left, final Expression right) {
+		Operator op = OrOperator.OR;
+		int reg = codegen.loadRegister(left);
+		Codegen.Location rightLocation = codegen.buildOperands(right);
+		codegen.gen2Address(op.opcode(), reg, rightLocation);
+		codegen.freeTemp(rightLocation);
+		return new VariableExpression(BOOLEAN_TYPE, reg, DIRECT); // temporary
 	}
 
 	/***************************************************************************

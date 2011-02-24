@@ -145,8 +145,14 @@ guardedCommand<SymbolTable scope, GCRecord  ifRecord >  (.  Expression expr; .)
 	statementPart<scope>  (. semantic.elseIf(ifRecord); .).
 /*----------------------------------------------------------*/
 expression<^Expression left, SymbolTable scope>
+(. Expression right; .)
 =
-	relationalExpr<^left, scope> .
+	andExpression<^left, scope> {"|" andExpression<^right, scope> (. left = semantic.orExpression(left, right); .)} .
+/*----------------------------------------------------------*/
+andExpression<^Expression left, SymbolTable scope>
+(. Expression right; .)
+=
+	relationalExpr<^left, scope> {"&" relationalExpr<^right, scope> (. left = semantic.andExpression(left, right); .)} .
 /*----------------------------------------------------------*/
 relationalExpr<^Expression left, SymbolTable scope>
 	(. Expression right; RelationalOperator op; .)
