@@ -130,6 +130,11 @@ assignStatement<SymbolTable scope>
 		{ "," expression<^exp, scope> (. expressions.right(exp); .) }
 		(. semantic.parallelAssign(expressions); .).
 /*----------------------------------------------------------*/
+doStatement<SymbolTable scope>  (. GCRecord doRecord; .)
+=
+	"do" (. doRecord = semantic.startDo(); .)  guardedCommandList<scope, doRecord > 
+	"od" (. semantic.endDo(doRecord); .). //Remember - guarded command is currently using if specific semantic actions. figure it out!
+/*----------------------------------------------------------*/
 ifStatement<SymbolTable scope>  (. GCRecord ifRecord; .)
 =
 	"if" (. ifRecord = semantic.startIf(); .)  guardedCommandList<scope, ifRecord > 
