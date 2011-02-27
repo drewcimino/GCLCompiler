@@ -1,6 +1,10 @@
-java -cp . gcl.GCLCompiler ..\tests\test0 ..\tests\results\test0list.txt 
+java -cp . gcl.GCLCompiler ..\tests\modTest ..\tests\results\modTestlist.txt 
 ..\sam3-pc.exe
-..\macc3-pc.exe <..\tests\test0.dat >..\tests\results\test0.result
+..\macc3-pc.exe <..\tests\modTest.dat >..\tests\results\modTest.result
+::-----------------------------------------------------------------------
+::java -cp . gcl.GCLCompiler ..\tests\test0 ..\tests\results\test0list.txt 
+::..\sam3-pc.exe
+::..\macc3-pc.exe <..\tests\test0.dat >..\tests\results\test0.result
 java -cp . gcl.GCLCompiler ..\tests\test0.fix ..\tests\results\test0fixlist.txt 
 ..\sam3-pc.exe
 ..\macc3-pc.exe <..\tests\test0.dat >..\tests\results\test0fix.result
@@ -16,15 +20,15 @@ java -cp . gcl.GCLCompiler ..\tests\test2 ..\tests\results\test2list.txt
 java -cp . gcl.GCLCompiler ..\tests\test3 ..\tests\results\test3list.txt 
 ..\sam3-pc.exe
 ..\macc3-pc.exe  >..\tests\results\test3.result
-::java -cp . gcl.GCLCompiler ..\tests\test4 ..\tests\results\test4list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  >..\tests\results\test4.result
+java -cp . gcl.GCLCompiler ..\tests\test4 ..\tests\results\test4list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  >..\tests\results\test4.result
 ::java -cp . gcl.GCLCompiler ..\tests\test4_1 ..\tests\results\test4_1list.txt 
 ::..\sam3-pc.exe
 ::..\macc3-pc.exe  >..\tests\results\test4_1.result
-::java -cp . gcl.GCLCompiler ..\tests\test5 ..\tests\results\test5list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  >..\tests\results\test5.result
+java -cp . gcl.GCLCompiler ..\tests\test5 ..\tests\results\test5list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  >..\tests\results\test5.result
 java -cp . gcl.GCLCompiler ..\tests\test5_1 ..\tests\results\test5_1list.txt 
 ..\sam3-pc.exe
 ..\macc3-pc.exe  >..\tests\results\test5_1.result

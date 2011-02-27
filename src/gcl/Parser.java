@@ -5,14 +5,14 @@ public class Parser {
 	public static final int _EOF = 0;
 	public static final int _identifier = 1;
 	public static final int _numeral = 2;
-	public static final int maxT = 42;
-	public static final int _option1 = 43;
-	public static final int _option3 = 44;
-	public static final int _option5 = 45;
-	public static final int _option6 = 46;
-	public static final int _option7 = 47;
-	public static final int _option9 = 48;
-	public static final int _option10 = 49;
+	public static final int maxT = 43;
+	public static final int _option1 = 44;
+	public static final int _option3 = 45;
+	public static final int _option5 = 46;
+	public static final int _option6 = 47;
+	public static final int _option7 = 48;
+	public static final int _option9 = 49;
+	public static final int _option10 = 50;
 
 	static final boolean T = true;
 	static final boolean x = false;
@@ -66,24 +66,24 @@ public class Parser {
 			la = scanner.Scan();
 			if (la.kind <= maxT) { ++errDist; break; }
 
-			if (la.kind == 43) {
+			if (la.kind == 44) {
 				CompilerOptions.listCode = la.val.charAt(2) == '+'; 
 			}
-			if (la.kind == 44) {
+			if (la.kind == 45) {
 				CompilerOptions.optimize = la.val.charAt(2) == '+'; 
 			}
-			if (la.kind == 45) {
+			if (la.kind == 46) {
 				SymbolTable.dumpAll(); 
 			}
-			if (la.kind == 46) {
-			}
 			if (la.kind == 47) {
-				CompilerOptions.showMessages = la.val.charAt(2) == '+'; 
 			}
 			if (la.kind == 48) {
-				CompilerOptions.printAllocatedRegisters(); 
+				CompilerOptions.showMessages = la.val.charAt(2) == '+'; 
 			}
 			if (la.kind == 49) {
+				CompilerOptions.printAllocatedRegisters(); 
+			}
+			if (la.kind == 50) {
 			}
 			la = t;
 		}
@@ -121,11 +121,11 @@ public class Parser {
 	
 	void gcl() {
 		semantic.startCode();  SymbolTable scope = SymbolTable.currentScope(); 
-		while (!(la.kind == 0 || la.kind == 3)) {SynErr(43); Get();}
+		while (!(la.kind == 0 || la.kind == 3)) {SynErr(44); Get();}
 		module(scope);
 		while (la.kind == 3) {
 			scope = scope.openScope(true); 
-			while (!(la.kind == 0 || la.kind == 3)) {SynErr(44); Get();}
+			while (!(la.kind == 0 || la.kind == 3)) {SynErr(45); Get();}
 			module(scope);
 		}
 		semantic.finishCode(); 
@@ -145,7 +145,7 @@ public class Parser {
 
 	void definitionPart(SymbolTable scope) {
 		while (la.kind == 10 || la.kind == 11 || la.kind == 12) {
-			while (!(StartOf(1))) {SynErr(45); Get();}
+			while (!(StartOf(1))) {SynErr(46); Get();}
 			definition(scope);
 			ExpectWeak(8, 2);
 		}
@@ -153,18 +153,18 @@ public class Parser {
 
 	void block(SymbolTable scope) {
 		definitionPart(scope);
-		while (!(la.kind == 0 || la.kind == 6)) {SynErr(46); Get();}
+		while (!(la.kind == 0 || la.kind == 6)) {SynErr(47); Get();}
 		Expect(6);
 		statementPart(scope);
 		Expect(7);
 	}
 
 	void statementPart(SymbolTable scope) {
-		while (!(StartOf(3))) {SynErr(47); Get();}
+		while (!(StartOf(3))) {SynErr(48); Get();}
 		statement(scope);
 		ExpectWeak(8, 4);
 		while (StartOf(5)) {
-			while (!(StartOf(3))) {SynErr(48); Get();}
+			while (!(StartOf(3))) {SynErr(49); Get();}
 			statement(scope);
 			ExpectWeak(8, 4);
 		}
@@ -175,17 +175,33 @@ public class Parser {
 	}
 
 	void statement(SymbolTable scope) {
-		if (la.kind == 15) {
+		switch (la.kind) {
+		case 15: {
 			emptyStatement();
-		} else if (la.kind == 16) {
+			break;
+		}
+		case 16: {
 			readStatement(scope);
-		} else if (la.kind == 17) {
+			break;
+		}
+		case 17: {
 			writeStatement(scope);
-		} else if (la.kind == 1) {
+			break;
+		}
+		case 1: {
 			assignStatement(scope);
-		} else if (la.kind == 21) {
+			break;
+		}
+		case 21: {
 			ifStatement(scope);
-		} else SynErr(49);
+			break;
+		}
+		case 19: {
+			doStatement(scope);
+			break;
+		}
+		default: SynErr(50); break;
+		}
 	}
 
 	void variableDefinition(SymbolTable scope, ParameterKind kindOfParam) {
@@ -211,7 +227,7 @@ public class Parser {
 			result = typeSymbol();
 		} else if (la.kind == 12) {
 			result = tupleType(scope);
-		} else SynErr(50);
+		} else SynErr(51);
 		return result;
 	}
 
@@ -224,7 +240,7 @@ public class Parser {
 		} else if (la.kind == 11) {
 			Get();
 			result = booleanType; 
-		} else SynErr(51);
+		} else SynErr(52);
 		return result;
 	}
 
@@ -306,6 +322,15 @@ public class Parser {
 		semantic.endIf(ifRecord); 
 	}
 
+	void doStatement(SymbolTable scope) {
+		GCRecord doRecord; 
+		Expect(19);
+		doRecord = semantic.startDo(); 
+		guardedCommandList(scope, doRecord );
+		Expect(20);
+		semantic.endDo(doRecord); 
+	}
+
 	Expression  variableAccessEtc(SymbolTable scope) {
 		Expression  result;
 		SemanticItem workValue; 
@@ -324,15 +349,6 @@ public class Parser {
 			left = semantic.orExpression(left, right); 
 		}
 		return left;
-	}
-
-	void doStatement(SymbolTable scope) {
-		GCRecord doRecord; 
-		Expect(19);
-		doRecord = semantic.startDo(); 
-		guardedCommandList(scope, doRecord );
-		Expect(20);
-		semantic.endDo(doRecord); 
 	}
 
 	void guardedCommandList(SymbolTable scope, GCRecord ifRecord) {
@@ -392,7 +408,7 @@ public class Parser {
 			Get();
 			left = term(scope);
 			left = semantic.negateBooleanExpression(left); 
-		} else SynErr(52);
+		} else SynErr(53);
 		while (la.kind == 27 || la.kind == 28) {
 			op = addOperator();
 			right = term(scope);
@@ -405,50 +421,61 @@ public class Parser {
 		RelationalOperator  op;
 		op = null; 
 		switch (la.kind) {
-		case 32: {
+		case 33: {
 			Get();
 			op = RelationalOperator.EQUAL; 
 			break;
 		}
-		case 33: {
+		case 34: {
 			Get();
 			op = RelationalOperator.NOT_EQUAL; 
 			break;
 		}
-		case 34: {
+		case 35: {
 			Get();
 			op = RelationalOperator.GREATER; 
 			break;
 		}
-		case 35: {
+		case 36: {
 			Get();
 			op = RelationalOperator.GREATER_OR_EQUAL; 
 			break;
 		}
-		case 36: {
+		case 37: {
 			Get();
 			op = RelationalOperator.LESS; 
 			break;
 		}
-		case 37: {
+		case 38: {
 			Get();
 			op = RelationalOperator.LESS_OR_EQUAL; 
 			break;
 		}
-		default: SynErr(53); break;
+		default: SynErr(54); break;
 		}
 		return op;
 	}
 
 	Expression  term(SymbolTable scope) {
 		Expression  left;
-		Expression right; MultiplyOperator op; 
-		left = factor(scope);
-		while (la.kind == 38 || la.kind == 39) {
-			op = multiplyOperator();
-			right = factor(scope);
-			left = semantic.multiplyExpression(left, op, right); 
-		}
+		left = null; 
+		if (StartOf(8)) {
+			Expression right; MultiplyOperator op; 
+			left = factor(scope);
+			while (la.kind == 39 || la.kind == 40) {
+				op = multiplyOperator();
+				right = factor(scope);
+				left = semantic.multiplyExpression(left, op, right); 
+			}
+		} else if (StartOf(8)) {
+			Expression right; 
+			left = factor(scope);
+			while (la.kind == 30) {
+				Get();
+				right = factor(scope);
+				left = semantic.moduloExpression(left, right); 
+			}
+		} else SynErr(55);
 		return left;
 	}
 
@@ -461,7 +488,7 @@ public class Parser {
 		} else if (la.kind == 28) {
 			Get();
 			op = AddOperator.MINUS; 
-		} else SynErr(54);
+		} else SynErr(56);
 		return op;
 	}
 
@@ -474,14 +501,14 @@ public class Parser {
 			Get();
 			result = new ConstantExpression (integerType, Integer.parseInt(currentToken().spelling()));
 			
-		} else if (la.kind == 40 || la.kind == 41) {
+		} else if (la.kind == 41 || la.kind == 42) {
 			booleanConstant();
 			result = new ConstantExpression (booleanType, (Boolean.parseBoolean(currentToken().spelling())) ? 1 : 0);
 			
-		} else if (la.kind == 30) {
+		} else if (la.kind == 31) {
 			Get();
 			result = expression(scope);
-			Expect(31);
+			Expect(32);
 		} else if (la.kind == 13) {
 			Expression exp;
 			ExpressionList tupleFields = new ExpressionList();
@@ -496,29 +523,29 @@ public class Parser {
 			}
 			Expect(14);
 			result = semantic.buildTuple(tupleFields); 
-		} else SynErr(55);
+		} else SynErr(57);
 		return result;
 	}
 
 	MultiplyOperator  multiplyOperator() {
 		MultiplyOperator  op;
 		op = null; 
-		if (la.kind == 38) {
+		if (la.kind == 39) {
 			Get();
 			op = MultiplyOperator.TIMES; 
-		} else if (la.kind == 39) {
+		} else if (la.kind == 40) {
 			Get();
 			op = MultiplyOperator.DIVIDE; 
-		} else SynErr(56);
+		} else SynErr(58);
 		return op;
 	}
 
 	void booleanConstant() {
-		if (la.kind == 40) {
+		if (la.kind == 41) {
 			Get();
-		} else if (la.kind == 41) {
+		} else if (la.kind == 42) {
 			Get();
-		} else SynErr(57);
+		} else SynErr(59);
 	}
 
 	SemanticItem  qualifiedIdentifier(SymbolTable scope) {
@@ -541,14 +568,15 @@ public class Parser {
 	}
 
 	private boolean[][] set = {
-		{T,T,x,T, x,x,T,x, x,x,T,T, T,x,x,T, T,T,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{T,x,x,x, x,x,x,x, x,x,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{T,T,x,T, T,T,T,x, x,x,T,T, T,x,x,T, T,T,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{T,T,x,T, x,x,T,T, x,x,T,T, T,x,x,T, T,T,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, T,T,x,x, x,x,x,x},
-		{x,T,T,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,x, x,x,x,x, x,x,x,x, T,T,x,x}
+		{T,T,x,T, x,x,T,x, x,x,T,T, T,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{T,x,x,x, x,x,x,x, x,x,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{T,T,x,T, T,T,T,x, x,x,T,T, T,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{T,T,x,T, x,x,T,T, x,x,T,T, T,x,x,T, T,T,x,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
+		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, T,T,T,x, x,x,x,x, x},
+		{x,T,T,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,T, x,x,x,x, x,x,x,x, x,T,T,x, x},
+		{x,T,T,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,T,T,x, x}
 
 	};
 } // end Parser
@@ -608,34 +636,36 @@ class Errors {
 			case 27: s = "\"+\" expected"; break;
 			case 28: s = "\"-\" expected"; break;
 			case 29: s = "\"~\" expected"; break;
-			case 30: s = "\"(\" expected"; break;
-			case 31: s = "\")\" expected"; break;
-			case 32: s = "\"=\" expected"; break;
-			case 33: s = "\"#\" expected"; break;
-			case 34: s = "\">\" expected"; break;
-			case 35: s = "\">=\" expected"; break;
-			case 36: s = "\"<\" expected"; break;
-			case 37: s = "\"<=\" expected"; break;
-			case 38: s = "\"*\" expected"; break;
-			case 39: s = "\"/\" expected"; break;
-			case 40: s = "\"true\" expected"; break;
-			case 41: s = "\"false\" expected"; break;
-			case 42: s = "??? expected"; break;
-			case 43: s = "this symbol not expected in gcl"; break;
+			case 30: s = "\"\\\\\" expected"; break;
+			case 31: s = "\"(\" expected"; break;
+			case 32: s = "\")\" expected"; break;
+			case 33: s = "\"=\" expected"; break;
+			case 34: s = "\"#\" expected"; break;
+			case 35: s = "\">\" expected"; break;
+			case 36: s = "\">=\" expected"; break;
+			case 37: s = "\"<\" expected"; break;
+			case 38: s = "\"<=\" expected"; break;
+			case 39: s = "\"*\" expected"; break;
+			case 40: s = "\"/\" expected"; break;
+			case 41: s = "\"true\" expected"; break;
+			case 42: s = "\"false\" expected"; break;
+			case 43: s = "??? expected"; break;
 			case 44: s = "this symbol not expected in gcl"; break;
-			case 45: s = "this symbol not expected in definitionPart"; break;
-			case 46: s = "this symbol not expected in block"; break;
-			case 47: s = "this symbol not expected in statementPart"; break;
+			case 45: s = "this symbol not expected in gcl"; break;
+			case 46: s = "this symbol not expected in definitionPart"; break;
+			case 47: s = "this symbol not expected in block"; break;
 			case 48: s = "this symbol not expected in statementPart"; break;
-			case 49: s = "invalid statement"; break;
-			case 50: s = "invalid type"; break;
-			case 51: s = "invalid typeSymbol"; break;
-			case 52: s = "invalid simpleExpr"; break;
-			case 53: s = "invalid relationalOperator"; break;
-			case 54: s = "invalid addOperator"; break;
-			case 55: s = "invalid factor"; break;
-			case 56: s = "invalid multiplyOperator"; break;
-			case 57: s = "invalid booleanConstant"; break;
+			case 49: s = "this symbol not expected in statementPart"; break;
+			case 50: s = "invalid statement"; break;
+			case 51: s = "invalid type"; break;
+			case 52: s = "invalid typeSymbol"; break;
+			case 53: s = "invalid simpleExpr"; break;
+			case 54: s = "invalid relationalOperator"; break;
+			case 55: s = "invalid term"; break;
+			case 56: s = "invalid addOperator"; break;
+			case 57: s = "invalid factor"; break;
+			case 58: s = "invalid multiplyOperator"; break;
+			case 59: s = "invalid booleanConstant"; break;
 				default: s = "error " + n; break;
 			}
 			printMsg(line, col, s);

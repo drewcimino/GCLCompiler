@@ -105,7 +105,7 @@ tupleType<^TupleType result, SymbolTable scope>   (. TypeDescriptor type; Identi
 statement<SymbolTable scope>
 =
 	emptyStatement | readStatement<scope>  | writeStatement<scope> 
-	| assignStatement<scope> | ifStatement<scope>.
+	| assignStatement<scope> | ifStatement<scope> | doStatement<scope>.
 /*----------------------------------------------------------*/
 emptyStatement     = "skip".
 /*----------------------------------------------------------*/
@@ -133,7 +133,7 @@ assignStatement<SymbolTable scope>
 doStatement<SymbolTable scope>  (. GCRecord doRecord; .)
 =
 	"do" (. doRecord = semantic.startDo(); .)  guardedCommandList<scope, doRecord > 
-	"od" (. semantic.endDo(doRecord); .). //Remember - guarded command is currently using if specific semantic actions. figure it out!
+	"od" (. semantic.endDo(doRecord); .).
 /*----------------------------------------------------------*/
 ifStatement<SymbolTable scope>  (. GCRecord ifRecord; .)
 =
@@ -180,11 +180,14 @@ simpleExpr<^Expression left, SymbolTable scope>
 			(. left = semantic.addExpression(left, op, right); .)
 	}.
 /*----------------------------------------------------------*/
-term<^Expression left, SymbolTable scope>
-	(. Expression right; MultiplyOperator op; .)
+term<^Expression left, SymbolTable scope> (. left = null; .)
 =
+	(. Expression right; MultiplyOperator op; .)
 	factor<^ left, scope> { multiplyOperator<^op>  factor<^right, scope>
-	(. left = semantic.multiplyExpression(left, op, right); .) }.
+	(. left = semantic.multiplyExpression(left, op, right); .) }
+	| (. Expression right; .)
+	factor<^ left, scope> { "\\"  factor<^right, scope>
+	(. left = semantic.moduloExpression(left, right); .) }.
 /*----------------------------------------------------------*/
 factor<^Expression result, SymbolTable scope>  (. result = null; .)
 =

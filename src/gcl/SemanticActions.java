@@ -1193,6 +1193,26 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
+	 * Generate code to calculate left modulo right. Result in Register.
+	 * 
+	 * @param left an expression (lhs)Must be integer
+	 * @param right an expression (rhs)Must be integer
+	 * @return result expression left modulo right (in register)
+	 **************************************************************************/
+	Expression moduloExpression(final Expression left, final Expression right) {
+		int reg = codegen.loadRegister(left);
+		int original = codegen.loadRegister(left);
+		Codegen.Location rightLocation = codegen.buildOperands(right);
+		codegen.gen2Address(ID, reg, rightLocation);
+		codegen.gen2Address(IM, reg, rightLocation);
+		Codegen.Location regLocation = codegen.buildOperands(new VariableExpression(INTEGER_TYPE, reg, DIRECT)); // temporary)
+		codegen.gen2Address(IS, original, regLocation);
+		codegen.freeTemp(rightLocation);
+		codegen.freeTemp(regLocation);
+		return new VariableExpression(INTEGER_TYPE, original, DIRECT); // temporary
+	}
+	
+	/***************************************************************************
 	 * Generate code to add two boolean expressions. Result in Register.
 	 * 
 	 * @param left an expression (lhs)Must be boolean
@@ -1256,13 +1276,34 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate the final label for an IF. (Halt of we fall through to here).
+	 * Generate the final label for an IF. (Halt if we fall through to here).
 	 * 
 	 * @param entry GCRecord holding the labels for this statement.
 	 **************************************************************************/
 	void endIf(final GCRecord entry) {
 		codegen.gen0Address(HALT);
 		codegen.genLabel('J', entry.outLabel());
+	}
+	
+	/***************************************************************************
+	 * Create a label record with the outlabel for a DO statement.
+	 * Generate the out label at the beginning.
+	 * 
+	 * @return GCRecord entry with two label slots for this statement.
+	 **************************************************************************/
+	GCRecord startDo() {
+		int startLabel = codegen.getLabel();
+		codegen.genLabel('J', startLabel);
+		return new GCRecord(startLabel, 0);
+	}
+
+	/***************************************************************************
+	 * (Halt of we fall through to here).
+	 * 
+	 * @param entry GCRecord holding the labels for this statement.
+	 **************************************************************************/
+	void endDo(final GCRecord entry) {
+		// nothing
 	}
 
 	/***************************************************************************
