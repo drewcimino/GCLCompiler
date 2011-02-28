@@ -34,6 +34,7 @@ PRAGMAS
 
 COMMENTS FROM "{" TO "}" NESTED
 COMMENTS FROM "--" TO eol
+COMMENTS FROM "--" TO nl   // Added for running on OSX
 
 IGNORE eol + tab + nl
 
