@@ -421,32 +421,32 @@ public class Parser {
 		RelationalOperator  op;
 		op = null; 
 		switch (la.kind) {
-		case 33: {
+		case 32: {
 			Get();
 			op = RelationalOperator.EQUAL; 
 			break;
 		}
-		case 34: {
+		case 33: {
 			Get();
 			op = RelationalOperator.NOT_EQUAL; 
 			break;
 		}
-		case 35: {
+		case 34: {
 			Get();
 			op = RelationalOperator.GREATER; 
 			break;
 		}
-		case 36: {
+		case 35: {
 			Get();
 			op = RelationalOperator.GREATER_OR_EQUAL; 
 			break;
 		}
-		case 37: {
+		case 36: {
 			Get();
 			op = RelationalOperator.LESS; 
 			break;
 		}
-		case 38: {
+		case 37: {
 			Get();
 			op = RelationalOperator.LESS_OR_EQUAL; 
 			break;
@@ -458,24 +458,13 @@ public class Parser {
 
 	Expression  term(SymbolTable scope) {
 		Expression  left;
-		left = null; 
-		if (StartOf(8)) {
-			Expression right; MultiplyOperator op; 
-			left = factor(scope);
-			while (la.kind == 39 || la.kind == 40) {
-				op = multiplyOperator();
-				right = factor(scope);
-				left = semantic.multiplyExpression(left, op, right); 
-			}
-		} else if (StartOf(8)) {
-			Expression right; 
-			left = factor(scope);
-			while (la.kind == 30) {
-				Get();
-				right = factor(scope);
-				left = semantic.moduloExpression(left, right); 
-			}
-		} else SynErr(55);
+		Expression right; MultiplyOperator op; left = null; 
+		left = factor(scope);
+		while (la.kind == 38 || la.kind == 39 || la.kind == 40) {
+			op = multiplyOperator();
+			right = factor(scope);
+			left = semantic.multiplyExpression(left, op, right); 
+		}
 		return left;
 	}
 
@@ -488,7 +477,7 @@ public class Parser {
 		} else if (la.kind == 28) {
 			Get();
 			op = AddOperator.MINUS; 
-		} else SynErr(56);
+		} else SynErr(55);
 		return op;
 	}
 
@@ -505,10 +494,10 @@ public class Parser {
 			booleanConstant();
 			result = new ConstantExpression (booleanType, (Boolean.parseBoolean(currentToken().spelling())) ? 1 : 0);
 			
-		} else if (la.kind == 31) {
+		} else if (la.kind == 30) {
 			Get();
 			result = expression(scope);
-			Expect(32);
+			Expect(31);
 		} else if (la.kind == 13) {
 			Expression exp;
 			ExpressionList tupleFields = new ExpressionList();
@@ -523,20 +512,23 @@ public class Parser {
 			}
 			Expect(14);
 			result = semantic.buildTuple(tupleFields); 
-		} else SynErr(57);
+		} else SynErr(56);
 		return result;
 	}
 
 	MultiplyOperator  multiplyOperator() {
 		MultiplyOperator  op;
 		op = null; 
-		if (la.kind == 39) {
+		if (la.kind == 38) {
 			Get();
 			op = MultiplyOperator.TIMES; 
-		} else if (la.kind == 40) {
+		} else if (la.kind == 39) {
 			Get();
 			op = MultiplyOperator.DIVIDE; 
-		} else SynErr(58);
+		} else if (la.kind == 40) {
+			Get();
+			op = MultiplyOperator.MODULO; 
+		} else SynErr(57);
 		return op;
 	}
 
@@ -545,7 +537,7 @@ public class Parser {
 			Get();
 		} else if (la.kind == 42) {
 			Get();
-		} else SynErr(59);
+		} else SynErr(58);
 	}
 
 	SemanticItem  qualifiedIdentifier(SymbolTable scope) {
@@ -574,9 +566,8 @@ public class Parser {
 		{T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{T,T,x,T, x,x,T,T, x,x,T,T, T,x,x,T, T,T,x,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, T,T,T,x, x,x,x,x, x},
-		{x,T,T,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,T, x,x,x,x, x,x,x,x, x,T,T,x, x},
-		{x,T,T,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,T,T,x, x}
+		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, T,T,x,x, x,x,x,x, x},
+		{x,T,T,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,x, x,x,x,x, x,x,x,x, x,T,T,x, x}
 
 	};
 } // end Parser
@@ -636,17 +627,17 @@ class Errors {
 			case 27: s = "\"+\" expected"; break;
 			case 28: s = "\"-\" expected"; break;
 			case 29: s = "\"~\" expected"; break;
-			case 30: s = "\"\\\\\" expected"; break;
-			case 31: s = "\"(\" expected"; break;
-			case 32: s = "\")\" expected"; break;
-			case 33: s = "\"=\" expected"; break;
-			case 34: s = "\"#\" expected"; break;
-			case 35: s = "\">\" expected"; break;
-			case 36: s = "\">=\" expected"; break;
-			case 37: s = "\"<\" expected"; break;
-			case 38: s = "\"<=\" expected"; break;
-			case 39: s = "\"*\" expected"; break;
-			case 40: s = "\"/\" expected"; break;
+			case 30: s = "\"(\" expected"; break;
+			case 31: s = "\")\" expected"; break;
+			case 32: s = "\"=\" expected"; break;
+			case 33: s = "\"#\" expected"; break;
+			case 34: s = "\">\" expected"; break;
+			case 35: s = "\">=\" expected"; break;
+			case 36: s = "\"<\" expected"; break;
+			case 37: s = "\"<=\" expected"; break;
+			case 38: s = "\"*\" expected"; break;
+			case 39: s = "\"/\" expected"; break;
+			case 40: s = "\"\\\\\" expected"; break;
 			case 41: s = "\"true\" expected"; break;
 			case 42: s = "\"false\" expected"; break;
 			case 43: s = "??? expected"; break;
@@ -661,11 +652,10 @@ class Errors {
 			case 52: s = "invalid typeSymbol"; break;
 			case 53: s = "invalid simpleExpr"; break;
 			case 54: s = "invalid relationalOperator"; break;
-			case 55: s = "invalid term"; break;
-			case 56: s = "invalid addOperator"; break;
-			case 57: s = "invalid factor"; break;
-			case 58: s = "invalid multiplyOperator"; break;
-			case 59: s = "invalid booleanConstant"; break;
+			case 55: s = "invalid addOperator"; break;
+			case 56: s = "invalid factor"; break;
+			case 57: s = "invalid multiplyOperator"; break;
+			case 58: s = "invalid booleanConstant"; break;
 				default: s = "error " + n; break;
 			}
 			printMsg(line, col, s);

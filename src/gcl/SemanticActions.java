@@ -160,10 +160,19 @@ final class AddOperator extends Operator {
  * Multiply operators such as * and / Typesafe enumeration pattern as well as immutable
  */
 final class MultiplyOperator extends Operator {
-	public static final MultiplyOperator TIMES = new MultiplyOperator("times",
-			IM);
+	public static final MultiplyOperator TIMES = new MultiplyOperator(
+			"times", IM);
 	public static final MultiplyOperator DIVIDE = new MultiplyOperator(
 			"divide", ID);
+	public static final MultiplyOperator MODULO = new MultiplyOperator(
+			"modulo", ID /* <-- ID is a dummy value*/ );
+	//
+	// The samCode field of the MODULO MultiplyOperator uses a dummy
+	// value to conform to the structure of the Operator superclass.
+	//
+	// The multiplyExpression checks to see if MODULO is being passed, and
+	// executes modulusExpression instead (does not use MODULUS.samCode)
+	//
 
 	private MultiplyOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -1185,6 +1194,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression multiplyExpression(final Expression left, final MultiplyOperator op,
 			final Expression right) {
+		
+		if (op.toString().equals("modulus")){
+			return moduloExpression(left,right);
+		}
+		
 		int reg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
 		codegen.gen2Address(op.opcode(), reg, rightLocation);

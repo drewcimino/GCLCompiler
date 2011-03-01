@@ -314,15 +314,15 @@ public class Scanner {
 		start.set(38, 25); 
 		start.set(43, 26); 
 		start.set(126, 27); 
-		start.set(92, 28); 
-		start.set(40, 29); 
-		start.set(41, 30); 
-		start.set(61, 31); 
-		start.set(35, 32); 
+		start.set(40, 28); 
+		start.set(41, 29); 
+		start.set(61, 30); 
+		start.set(35, 31); 
 		start.set(62, 39); 
 		start.set(60, 40); 
-		start.set(42, 35); 
-		start.set(47, 36); 
+		start.set(42, 34); 
+		start.set(47, 35); 
+		start.set(92, 36); 
 		start.set(Buffer.EOF, -1);
 		literals.put("module", new Integer(3));
 		literals.put("private", new Integer(4));
@@ -414,7 +414,7 @@ public class Scanner {
 		if (ch == '-') {
 			NextCh();
 			for(;;) {
-				if (ch == 13) {
+				if (ch == 10) {
 					level--;
 					if (level == 0) { oldEols = line - line0; NextCh(); return true; }
 					NextCh();
@@ -428,6 +428,25 @@ public class Scanner {
 	}
 
 	boolean Comment1() {
+		int level = 1, pos0 = pos, line0 = line, col0 = col;
+		NextCh();
+		if (ch == '-') {
+			NextCh();
+			for(;;) {
+				if (ch == 13) {
+					level--;
+					if (level == 0) { oldEols = line - line0; NextCh(); return true; }
+					NextCh();
+				} else if (ch == Buffer.EOF) return false;
+				else NextCh();
+			}
+		} else {
+			buffer.setPos(pos0); NextCh(); line = line0; col = col0;
+		}
+		return false;
+	}
+
+	boolean Comment2() {
 		int level = 1, pos0 = pos, line0 = line, col0 = col;
 		NextCh();
 			for(;;) {
@@ -456,7 +475,7 @@ public class Scanner {
 		while (ch == ' ' ||
 			ch >= 9 && ch <= 10 || ch == 13
 		) NextCh();
-		if (ch == '-' && Comment0() ||ch == '{' && Comment1()) return NextToken();
+		if (ch == '-' && Comment0() ||ch == '-' && Comment1() ||ch == '{' && Comment2()) return NextToken();
 		t = new Token();
 		t.pos = pos; t.col = col; t.line = line; 
 		int state = start.state(ch);
@@ -544,9 +563,9 @@ public class Scanner {
 				case 31:
 					{t.kind = 33; break loop;}
 				case 32:
-					{t.kind = 34; break loop;}
+					{t.kind = 35; break loop;}
 				case 33:
-					{t.kind = 36; break loop;}
+					{t.kind = 37; break loop;}
 				case 34:
 					{t.kind = 38; break loop;}
 				case 35:
@@ -560,11 +579,11 @@ public class Scanner {
 					if (ch == '>') {AddCh(); state = 23; break;}
 					else {t.kind = 28; break loop;}
 				case 39:
-					if (ch == '=') {AddCh(); state = 33; break;}
-					else {t.kind = 35; break loop;}
+					if (ch == '=') {AddCh(); state = 32; break;}
+					else {t.kind = 34; break loop;}
 				case 40:
-					if (ch == '=') {AddCh(); state = 34; break;}
-					else {t.kind = 37; break loop;}
+					if (ch == '=') {AddCh(); state = 33; break;}
+					else {t.kind = 36; break loop;}
 
 			}
 		}
