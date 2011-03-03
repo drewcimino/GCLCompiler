@@ -1195,7 +1195,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression multiplyExpression(final Expression left, final MultiplyOperator op,
 			final Expression right) {
 		
-		if (op.toString().equals("modulus")){
+		if (op == MultiplyOperator.MODULO){
 			return moduloExpression(left,right);
 		}
 		
