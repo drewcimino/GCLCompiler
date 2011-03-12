@@ -1,0 +1,28 @@
+Compiled on: Sun Mar 06 16:59:30 EST 2011
+module test7 { strings}
+$        LDA     R15, V1
+$        LDA     R14, C1
+$        LD      R13, #16000
+private
+integer x;
+begin
+x := 6;
+$        LD      R0, +0(R14)
+$        STO     R0, +0(R15)
+write 'This is a test of strings.';
+-- line 7 col 7: invalid simpleExpr
+$        HALT    
+java.lang.NullPointerException
+	at gcl.SemanticActions.writeExpression(SemanticActions.java:1127)
+	at gcl.Parser.writeStatement(Parser.java:287)
+	at gcl.Parser.statement(Parser.java:188)
+	at gcl.Parser.statementPart(Parser.java:168)
+	at gcl.Parser.block(Parser.java:158)
+	at gcl.Parser.module(Parser.java:141)
+	at gcl.Parser.gcl(Parser.java:125)
+	at gcl.Parser.Parse(Parser.java:557)
+	at gcl.GCLCompiler.main(GCLCompiler.java:85)
+  <end of compilation of ../tests/test7>.  There were 2 errors detected.
+  Allocated Registers: 13 14 15 
+
+$        HALT    

@@ -17,23 +17,23 @@ java -cp . gcl.GCLCompiler ../tests/test2 ../tests/results/test2list.txt
 java -cp . gcl.GCLCompiler ../tests/test3 ../tests/results/test3list.txt 
 ../sam3
 ../macc3  >../tests/results/test3.result
-#java -cp . gcl.GCLCompiler ../tests/test4 ../tests/results/test4list.txt 
-#../sam3
-#../macc3  >../tests/results/test4.result
-#java -cp . gcl.GCLCompiler ../tests/test4_1 ../tests/results/test4_1list.txt 
-#../sam3
-#../macc3  >../tests/results/test4_1.result
-#java -cp . gcl.GCLCompiler ../tests/test5 ../tests/results/test5list.txt 
-#../sam3
-#../macc3  >../tests/results/test5.result
-#java -cp . gcl.GCLCompiler ../tests/test5_1 ../tests/results/test5_1list.txt 
-#../sam3
-#../macc3  >../tests/results/test5_1.result
+java -cp . gcl.GCLCompiler ../tests/test4 ../tests/results/test4list.txt 
+../sam3
+../macc3  >../tests/results/test4.result
+java -cp . gcl.GCLCompiler ../tests/test4_1 ../tests/results/test4_1list.txt 
+../sam3
+../macc3  >../tests/results/test4_1.result
+java -cp . gcl.GCLCompiler ../tests/test5 ../tests/results/test5list.txt 
+../sam3
+../macc3  >../tests/results/test5.result
+java -cp . gcl.GCLCompiler ../tests/test5_1 ../tests/results/test5_1list.txt 
+../sam3
+../macc3  >../tests/results/test5_1.result
 #java -cp . gcl.GCLCompiler ../tests/test6 ../tests/results/test6list.txt 
 #../sam3
-#java -cp . gcl.GCLCompiler ../tests/test7 ../tests/results/test7list.txt 
-#../sam3
-#../macc3  >../tests/results/test7.result
+java -cp . gcl.GCLCompiler ../tests/test7 ../tests/results/test7list.txt 
+../sam3
+../macc3  >../tests/results/test7.result
 #java -cp . gcl.GCLCompiler ../tests/test8 ../tests/results/test8list.txt 
 #../sam3
 #../macc3  >../tests/results/test8.result
