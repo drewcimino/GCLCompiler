@@ -117,6 +117,8 @@ abstract class Operator extends SemanticItem implements Mnemonic {
 	public final SamOp opcode() {
 		return opcode;
 	}
+	
+	public abstract ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right);
 
 	private final String value;
 	private final SamOp opcode;
@@ -126,19 +128,38 @@ abstract class Operator extends SemanticItem implements Mnemonic {
  * Relational operators such as = and # Typesafe enumeration pattern as well as
  * immutable
  */
-final class RelationalOperator extends Operator {
-	public static final RelationalOperator EQUAL = new RelationalOperator(
-			"equal", JEQ);
-	public static final RelationalOperator NOT_EQUAL = new RelationalOperator(
-			"notequal", JNE);
-	public static final RelationalOperator GREATER = new RelationalOperator(
-			"greater", JGT);
-	public static final RelationalOperator GREATER_OR_EQUAL = new RelationalOperator(
-			"greaterorequal", JGE);
-	public static final RelationalOperator LESS = new RelationalOperator(
-			"less", JLT);
-	public static final RelationalOperator LESS_OR_EQUAL = new RelationalOperator(
-			"lessorequal", JLE);
+abstract class RelationalOperator extends Operator {
+	
+	public static final RelationalOperator EQUAL = new RelationalOperator("equal", JEQ){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() == ((ConstantExpression)right).value()) ? 1: 0);
+		}
+	};
+	public static final RelationalOperator NOT_EQUAL = new RelationalOperator("notequal", JNE){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() != ((ConstantExpression)right).value()) ? 1: 0);
+		}
+	};
+	public static final RelationalOperator GREATER = new RelationalOperator("greater", JGT){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() > ((ConstantExpression)right).value()) ? 1: 0);
+		}
+	};
+	public static final RelationalOperator GREATER_OR_EQUAL = new RelationalOperator("greaterorequal", JGE){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() >= ((ConstantExpression)right).value()) ? 1: 0);
+		}
+	};
+	public static final RelationalOperator LESS = new RelationalOperator("less", JLT){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() < ((ConstantExpression)right).value()) ? 1: 0);
+		}
+	};
+	public static final RelationalOperator LESS_OR_EQUAL = new RelationalOperator("lessorequal", JLE){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() <= ((ConstantExpression)right).value()) ? 1: 0);
+		}
+	};
 
 	private RelationalOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -149,9 +170,17 @@ final class RelationalOperator extends Operator {
  * Add operators such as + and - Typesafe enumeration pattern as well as
  * immutable
  */
-final class AddOperator extends Operator {
-	public static final AddOperator PLUS = new AddOperator("plus", IA);
-	public static final AddOperator MINUS = new AddOperator("minus", IS);
+abstract class AddOperator extends Operator {
+	public static final AddOperator PLUS = new AddOperator("plus", IA){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(IntegerType.INTEGER_TYPE, left.value() + right.value());
+		}
+	};
+	public static final AddOperator MINUS = new AddOperator("minus", IS){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(IntegerType.INTEGER_TYPE, left.value() - right.value());
+		}
+	};
 
 	private AddOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -161,13 +190,22 @@ final class AddOperator extends Operator {
 /**
  * Multiply operators such as * and / Typesafe enumeration pattern as well as immutable
  */
-final class MultiplyOperator extends Operator {
-	public static final MultiplyOperator TIMES = new MultiplyOperator(
-			"times", IM);
-	public static final MultiplyOperator DIVIDE = new MultiplyOperator(
-			"divide", ID);
-	public static final MultiplyOperator MODULO = new MultiplyOperator(
-			"modulo", ID /* <-- ID is a dummy value*/ );
+abstract class MultiplyOperator extends Operator {
+	public static final MultiplyOperator TIMES = new MultiplyOperator("times", IM){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(IntegerType.INTEGER_TYPE, left.value() * right.value());
+		}
+	};
+	public static final MultiplyOperator DIVIDE = new MultiplyOperator("divide", ID){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(IntegerType.INTEGER_TYPE, left.value() / right.value());
+		}
+	};
+	public static final MultiplyOperator MODULO = new MultiplyOperator("modulo", ID /* <-- ID is a dummy value*/ ){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(IntegerType.INTEGER_TYPE, left.value() % right.value());
+		}
+	};
 	//
 	// The samCode field of the MODULO MultiplyOperator uses a dummy
 	// value to conform to the structure of the Operator superclass.
@@ -184,9 +222,13 @@ final class MultiplyOperator extends Operator {
 /**
  * And operator &
  */
-final class AndOperator extends Operator {
+abstract class AndOperator extends Operator {
 	
-	public static final AndOperator AND = new AndOperator("and", BA);
+	public static final AndOperator AND = new AndOperator("and", BA){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() == 1 && ((ConstantExpression)right).value() == 1) ? 1: 0);
+		}
+	};
 	
 	private AndOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -196,9 +238,13 @@ final class AndOperator extends Operator {
 /**
  * Or operator |
  */
-final class OrOperator extends Operator {
+abstract class OrOperator extends Operator {
 	
-	public static final OrOperator OR = new OrOperator("or", BO);
+	public static final OrOperator OR = new OrOperator("or", BO){
+		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
+			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() == 1 || ((ConstantExpression)right).value() == 1) ? 1: 0);
+		}
+	};
 	
 	private OrOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -210,7 +256,7 @@ class StringConstant extends SemanticItem implements ConstantLike {
 	public StringConstant(String gclString) {
 		
 		samString = convertToSamString(gclString);
-		size = samString.length();
+		size = 2*(gclString.length()/2);
 	}
 	
 	public String samString(){
@@ -221,7 +267,7 @@ class StringConstant extends SemanticItem implements ConstantLike {
 		return size;
 	}
 	
-	private String convertToSamString(String gclString){
+	private final String convertToSamString(String gclString){
 		
 		return "\"" + gclString.substring(1, gclString.length()-1).replaceAll("\\\\", "\\").replaceAll(":", "::").replaceAll("\"", ":\"") + "\"";
 	}
@@ -1190,6 +1236,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -integer (in register)
 	 **************************************************************************/
 	Expression addExpression(final Expression left, final AddOperator op, final Expression right) {
+		if(left instanceof ConstantExpression && right instanceof ConstantExpression) {
+			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
+		}
 		int reg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
 		codegen.gen2Address(op.opcode(), reg, rightLocation);
@@ -1204,6 +1253,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -integer (in register)
 	 **************************************************************************/
 	Expression negateExpression(final Expression expression) {
+		
+		if(expression instanceof ConstantExpression) {
+			return new ConstantExpression(expression.type(), -((ConstantExpression)expression).value());
+		}
 		Codegen.Location expressionLocation = codegen.buildOperands(expression);
 		int reg = codegen.getTemp(1);
 		codegen.gen2Address(INEG, reg, expressionLocation);
@@ -1218,6 +1271,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression ~boolean (in register)
 	 **************************************************************************/
 	Expression negateBooleanExpression(final Expression booleanExpression){
+		
+		if(booleanExpression instanceof ConstantExpression) {
+			return new ConstantExpression(booleanExpression.type(), 1-((ConstantExpression)booleanExpression).value());
+		}
 		int reg = codegen.loadRegister(new ConstantExpression(BOOLEAN_TYPE, 1));
 		Codegen.Location expressionLocation = codegen.buildOperands(booleanExpression);
 		codegen.gen2Address(IS, reg, expressionLocation);
@@ -1233,8 +1290,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param right an expression (rhs)Must be integer
 	 * @return result expression -integer (in register)
 	 **************************************************************************/
-	Expression multiplyExpression(final Expression left, final MultiplyOperator op,
-			final Expression right) {
+	Expression multiplyExpression(final Expression left, final MultiplyOperator op, final Expression right) {
+		
+		if(left instanceof ConstantExpression && right instanceof ConstantExpression) {
+			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
+		}
 		
 		if (op == MultiplyOperator.MODULO){
 			return moduloExpression(left,right);
@@ -1255,6 +1315,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression left modulo right (in register)
 	 **************************************************************************/
 	Expression moduloExpression(final Expression left, final Expression right) {
+		
 		int reg = codegen.loadRegister(left);
 		int original = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
@@ -1275,7 +1336,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -boolean (in register)
 	 **************************************************************************/
 	Expression andExpression(final Expression left, final Expression right) {
+		
 		Operator op = AndOperator.AND;
+		
+		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
+			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
+		}
+		
 		int reg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
 		codegen.gen2Address(op.opcode(), reg, rightLocation);
@@ -1291,7 +1358,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -boolean (in register)
 	 **************************************************************************/
 	Expression orExpression(final Expression left, final Expression right) {
+		
 		Operator op = OrOperator.OR;
+		
+		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
+			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
+		}
+		
 		int reg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
 		codegen.gen2Address(op.opcode(), reg, rightLocation);
@@ -1307,8 +1380,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param right an expression (rhs)
 	 * @return result expression -0(false) or 1(true) (in register)
 	 **************************************************************************/
-	Expression compareExpression(final Expression left, final RelationalOperator op,
-			final Expression right) {
+	Expression compareExpression(final Expression left, final RelationalOperator op, final Expression right) {
+		
+		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
+			op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
+		}
+		
 		int booleanreg = codegen.getTemp(1);
 		int resultreg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
@@ -1428,10 +1505,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if (expr.type() == BOOLEAN_TYPE){
 			
 		}
-		ConstantExpression constantExpr = expr;
+		//ConstantExpression constantExpr = expr; // can't
 		if (currentLevel().isGlobal()) { // Global variable
 			codegen.reserveGlobalAddress(type.size());
-			expr = new ConstantExpression(type, value);
+			//expr = new ConstantExpression(type, value);
 			codegen.buildOperands(expr);
 		} else { // may be param or local in a proc
 			// more later -- for now throw an exception

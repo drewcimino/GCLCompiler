@@ -7,29 +7,29 @@
      WRNL    
      WRST    +30(R14)
      WRNL    
-     WRST    +71(R14)
-     WRST    +76(R14)
-     WRST    +83(R14)
-     WRST    +89(R14)
-     WRST    +95(R14)
+     WRST    +70(R14)
+     WRST    +74(R14)
+     WRST    +80(R14)
+     WRST    +86(R14)
+     WRST    +92(R14)
      WRI     +0(R15)
-     WRST    +106(R14)
+     WRST    +102(R14)
      WRNL    
-     WRST    +109(R14)
-     WRST    +123(R14)
+     WRST    +104(R14)
+     WRST    +118(R14)
      WRNL    
-     WRST    +149(R14)
+     WRST    +142(R14)
      WRNL    
-     WRST    +151(R14)
+     WRST    +144(R14)
      WRNL    
-     WRST    +198(R14)
+     WRST    +190(R14)
      WRNL    
-     WRST    +228(R14)
-     WRST    +260(R14)
-     WRST    +264(R14)
-     WRST    +267(R14)
+     WRST    +218(R14)
+     WRST    +250(R14)
+     WRST    +252(R14)
+     WRST    +254(R14)
      WRNL    
-     WRST    +270(R14)
+     WRST    +256(R14)
      WRNL    
      HALT    
  LABEL C1
@@ -53,4 +53,4 @@
      STRING   ")"
      STRING   "but it isn't pretty."
  LABEL V1
-     SKIP     292
+     SKIP     278
