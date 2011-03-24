@@ -1,5 +1,7 @@
 package gcl;
 
+import gcl.Codegen.ConstantLike;
+
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -201,6 +203,31 @@ final class OrOperator extends Operator {
 	private OrOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
 	}
+}
+
+class StringConstant extends SemanticItem implements ConstantLike {
+	
+	public StringConstant(String gclString) {
+		
+		samString = convertToSamString(gclString);
+		size = samString.length();
+	}
+	
+	public String samString(){
+		return samString;
+	}
+	
+	public int size(){
+		return size;
+	}
+	
+	private String convertToSamString(String gclString){
+		
+		return "\"" + gclString.substring(1, gclString.length()-1).replaceAll("\\\\", "\\").replaceAll(":", "::").replaceAll("\"", ":\"") + "\"";
+	}
+	
+	private String samString;
+	private int size;
 }
 
 /**
@@ -1115,6 +1142,20 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		codegen.gen1Address(RDI, expressionLocation);
 	}
 
+	/***************************************************************************
+	 * Generate code to write a StringConstant.
+	 * 
+	 * @param expression (integer) expression
+	 **************************************************************************/
+	void writeString(final StringConstant stringConstant) {
+		if (stringConstant instanceof GeneralError) {
+			return;
+		}
+		codegen.reserveGlobalAddress(stringConstant.size());
+		Codegen.Location stringLocation = codegen.buildOperands(stringConstant);
+		codegen.gen1Address(WRST, stringLocation);
+	}
+	
 	/***************************************************************************
 	 * Generate code to write an integer expression.
 	 * 

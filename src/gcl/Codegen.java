@@ -409,6 +409,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	public void genIntDirective(final int value) {
 		writeFiles(INT_DIRECTIVE.samCodeString() + " " + value);
 	}
+	
+	public void genStringDirective(final String value) {
+		writeFiles(STRING_DIRECTIVE.samCodeString() + " " + value);
+	}
 
 	/**
 	 * Generate a SAM pseudo op SKIP
@@ -815,9 +819,14 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			int displacement = lookup(semanticItem);
 			if (displacement < 0) {
 				displacement = constantOffset;
-				// assume integer or boolean constant
 				storage.push(new SamConstant(displacement, semanticItem));
-				constantOffset += ((Expression) semanticItem).type().size();
+				if (semanticItem instanceof Expression) { // assume integer or boolean constant
+					constantOffset += ((Expression) semanticItem).type().size();
+				}
+				else { // assume string constant
+					constantOffset += ((StringConstant) semanticItem).size();
+				}
+				
 			}
 			return new Location(mode, base, displacement);
 		}
@@ -826,8 +835,15 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			Iterator<SamConstant> elements = elements();
 			while (elements.hasNext()) {
 				ConstantLike temp = (elements.next()).item();
-				ConstantExpression constant = (ConstantExpression) temp;
-				codegen.genIntDirective(constant.value());
+				if (temp instanceof ConstantExpression) {
+					ConstantExpression constant = (ConstantExpression) temp;
+					codegen.genIntDirective(constant.value());
+				}
+				else {
+					StringConstant constant = (StringConstant) temp;
+					codegen.genStringDirective(constant.samString());
+				}
+
 			}
 		}
 

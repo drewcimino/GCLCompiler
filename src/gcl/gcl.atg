@@ -22,8 +22,8 @@ CHARACTERS
 TOKENS
   identifier  = letter {letter | digit | underscore }.
   numeral = digit {digit}.
-  gclString = "'" singleQuotedStringCharacters { singleQuotedStringCharacters } "'" 
-  				 | '"' doubleQuotedStringCharacters { doubleQuotedStringCharacters } '"'.
+  gclString = "'" { singleQuotedStringCharacters } "'" 
+  				 | '"' { doubleQuotedStringCharacters } '"'.
 
 PRAGMAS 
 	option1 = "$"("c"|"C")("+"|"-").
@@ -127,15 +127,10 @@ writeStatement<SymbolTable scope>
 	"write" writeItem<scope> {"," writeItem<scope> }
 		(. semantic.genEol(); .).
 /*----------------------------------------------------------*/
-writeItem<SymbolTable scope> (. Expression exp; StringConstant phrase = null; .)
+writeItem<SymbolTable scope> (. Expression exp; .)
 =
 	expression<^exp, scope>  (. semantic.writeExpression(exp); .)		
-	| stringConstant<^phrase> (. semantic.writeString(phrase); .).
-/*----------------------------------------------------------*/
-stringConstant<^StringConstant phrase>
-=
-	gclString (. String samString = semantic.convertToSamString(currentToken().spelling());
-	             phrase = new StringConstant(samString); .).
+	| gclString (. semantic.writeString(new StringConstant(currentToken().spelling())); .).
 /*----------------------------------------------------------*/
 assignStatement<SymbolTable scope>
 		(. AssignRecord expressions = new AssignRecord(); Expression exp; .)

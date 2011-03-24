@@ -1,4 +1,4 @@
-Compiled on: Sun Mar 06 16:59:30 EST 2011
+Compiled on: Wed Mar 23 23:30:26 EDT 2011
 module test7 { strings}
 $        LDA     R15, V1
 $        LDA     R14, C1
@@ -10,19 +10,66 @@ x := 6;
 $        LD      R0, +0(R14)
 $        STO     R0, +0(R15)
 write 'This is a test of strings.';
--- line 7 col 7: invalid simpleExpr
+$        WRST    +2(R14)
+$        WRNL    
+write " You can quote or double quote strings,";
+$        WRST    +30(R14)
+$        WRNL    
+write "and", " you ", 'can ', "put " , "several (", x,")";
+$        WRST    +71(R14)
+$        WRST    +76(R14)
+$        WRST    +83(R14)
+$        WRST    +89(R14)
+$        WRST    +95(R14)
+$        WRI     +0(R15)
+$        WRST    +106(R14)
+$        WRNL    
+write "on a line.  ", "Colons ':' are special.";
+$        WRST    +109(R14)
+$        WRST    +123(R14)
+$        WRNL    
+write "";
+$        WRST    +149(R14)
+$        WRNL    
+write "To embed single 'quotes', use the other kind.";
+$        WRST    +151(R14)
+$        WRNL    
+write 'Ditto for "double quotes".';
+$        WRST    +198(R14)
+$        WRNL    
+write "You can even quote a quote ( '",'"',"'",")";
+$        WRST    +228(R14)
+$        WRST    +260(R14)
+$        WRST    +264(R14)
+$        WRST    +267(R14)
+$        WRNL    
+write "but it isn't pretty.";
+$        WRST    +270(R14)
+$        WRNL    
+end.
 $        HALT    
-java.lang.NullPointerException
-	at gcl.SemanticActions.writeExpression(SemanticActions.java:1127)
-	at gcl.Parser.writeStatement(Parser.java:287)
-	at gcl.Parser.statement(Parser.java:188)
-	at gcl.Parser.statementPart(Parser.java:168)
-	at gcl.Parser.block(Parser.java:158)
-	at gcl.Parser.module(Parser.java:141)
-	at gcl.Parser.gcl(Parser.java:125)
-	at gcl.Parser.Parse(Parser.java:557)
-	at gcl.GCLCompiler.main(GCLCompiler.java:85)
-  <end of compilation of ../tests/test7>.  There were 2 errors detected.
+$    LABEL C1
+$        INT      6
+$        STRING   "This is a test of strings."
+$        STRING   " You can quote or double quote strings,"
+$        STRING   "and"
+$        STRING   " you "
+$        STRING   "can "
+$        STRING   "put "
+$        STRING   "several ("
+$        STRING   ")"
+$        STRING   "on a line.  "
+$        STRING   "Colons '::' are special."
+$        STRING   ""
+$        STRING   "To embed single 'quotes', use the other kind."
+$        STRING   "Ditto for :"double quotes:"."
+$        STRING   "You can even quote a quote ( '"
+$        STRING   ":""
+$        STRING   "'"
+$        STRING   ")"
+$        STRING   "but it isn't pretty."
+$    LABEL V1
+$        SKIP     292
+  <end of compilation of ../tests/test7>.  There were no errors detected.
   Allocated Registers: 13 14 15 
 
-$        HALT    
