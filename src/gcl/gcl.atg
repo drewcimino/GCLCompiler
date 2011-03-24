@@ -73,7 +73,16 @@ statementPart<SymbolTable scope>
 /*----------------------------------------------------------*/
 definition<SymbolTable scope>  
 =  
-	variableDefinition<scope, ParameterKind.NOT_PARAM>  .
+	variableDefinition<scope, ParameterKind.NOT_PARAM>  |
+	constantDefinition<scope, ParameterKind.NOT_PARAM> .
+/*----------------------------------------------------------*/
+constantDefinition<SymbolTable scope, ParameterKind kindOfParam>
+	(. Identifier id; Expression exp; .)
+=
+	"constant" identifier 
+	(. id = new Identifier(currentToken().spelling()); .)
+	"=" expression<^exp,scope>
+	(. semantic.declareConstant(scope, id, exp); .) .
 /*----------------------------------------------------------*/
 variableDefinition<SymbolTable scope, ParameterKind kindOfParam> 
 	(. TypeDescriptor type; Identifier id; .)

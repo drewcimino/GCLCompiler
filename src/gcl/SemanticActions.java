@@ -1413,6 +1413,35 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
+	 * Enter the identifier into the symbol table, marking it as a constant of
+	 * the given type. This method handles global constants as well as local
+	 * constants and procedure parameters.
+	 * 
+	 * @param scope the current symbol table
+	 * @param type the type to be of the constant being defined
+	 * @param ID identifier to be defined
+	 * @param procParam the kind of procedure param it is (if any).
+	 **************************************************************************/
+	void declareConstant(final SymbolTable scope, final Identifier id, final Expression expr) {
+		final TypeDescriptor type = INTEGER_TYPE;
+		complainIfDefinedHere(scope, id);
+		if (expr.type() == BOOLEAN_TYPE){
+			
+		}
+		ConstantExpression constantExpr = expr;
+		if (currentLevel().isGlobal()) { // Global variable
+			codegen.reserveGlobalAddress(type.size());
+			expr = new ConstantExpression(type, value);
+			codegen.buildOperands(expr);
+		} else { // may be param or local in a proc
+			// more later -- for now throw an exception
+			throw new IllegalStateException("Missing code in declareVariable.");
+		}
+		SymbolTable.Entry constant = scope.newEntry("constant", id, expr);
+		CompilerOptions.message("Entering: " + constant);
+	}
+	
+	/***************************************************************************
 	 * Enter the identifier into the symbol table, marking it as a variable of
 	 * the given type. This method handles global variables as well as local
 	 * variables and procedure parameters.
