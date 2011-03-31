@@ -1,6 +1,7 @@
 package gcl;
 
 import gcl.Codegen.ConstantLike;
+import gcl.SemanticActions.GCLErrorStream;
 
 import java.util.Iterator;
 import java.util.ArrayList;
@@ -853,6 +854,8 @@ abstract class GCLError {
 			"ERROR -> The Left Hand Side is not a variable access. ");
 	static final GCLError EXPRESSION_REQUIRED = new Value(7,
 			"ERROR -> Expression required. ");
+	static final GCLError ILLEGAL_IDENTIFIER = new Value(8,
+			"ERROR -> Illegal Spelling of Identifer. ");
 	
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(92,
@@ -961,6 +964,21 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if (!OKToRedefine(entry)) {
 			err.semanticError(GCLError.ALREADY_DEFINED);
 		}
+	}
+	
+	/***************************************************************************
+	 * Auxiliary Report that the identifier is already
+	 * defined in this scope if it is. Called from most declarations.
+	 * 
+	 * @param ID an Identifier
+	 * @param scope the symbol table used to find the identifier.
+	 **************************************************************************/
+	public Identifier validIdentifier(final String value) {
+		
+		if(-1 != value.indexOf("__")){
+			err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
+		}
+		return new Identifier(value);
 	}
 
 	/***************************************************************************

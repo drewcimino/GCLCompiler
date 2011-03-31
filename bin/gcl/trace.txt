@@ -222,8 +222,8 @@ Cross reference list:
 
 
 
-46 terminals
-86 symbols
+47 terminals
+87 symbols
 238 nodes
 10 sets
 Symbol Table:
@@ -231,58 +231,59 @@ Symbol Table:
 
  nr name           typ  hasAt graph  del   line tokenKind
   0 EOF            t    false                 0 fixedToken
-  1 identifier     t    false                23 classLitToken
-  2 numeral        t    false                24 classToken
-  3 gclString      t    false                25 classToken
-  4 "module"       t    false                58 litToken
-  5 "private"      t    false                60 litToken
-  6 "."            t    false                62 fixedToken
-  7 "begin"        t    false                66 litToken
-  8 "end"          t    false                66 litToken
-  9 ";"            t    false                68 fixedToken
- 10 "constant"     t    false                82 litToken
- 11 "="            t    false                84 fixedToken
- 12 ","            t    false                94 fixedToken
- 13 "integer"      t    false               106 litToken
- 14 "Boolean"      t    false               107 litToken
- 15 "tuple"        t    false               114 litToken
- 16 "["            t    false               114 fixedToken
- 17 "]"            t    false               119 fixedToken
- 18 "skip"         t    false               127 litToken
- 19 "read"         t    false               131 litToken
- 20 "write"        t    false               136 litToken
- 21 ":="           t    false               149 fixedToken
- 22 "do"           t    false               156 litToken
- 23 "od"           t    false               157 litToken
- 24 "if"           t    false               161 litToken
- 25 "fi"           t    false               162 litToken
- 26 "[]"           t    false               166 fixedToken
- 27 "->"           t    false               170 fixedToken
- 28 "|"            t    false               176 fixedToken
- 29 "&"            t    false               181 fixedToken
- 30 "+"            t    false               194 fixedToken
- 31 "-"            t    false               195 fixedToken
- 32 "~"            t    false               197 fixedToken
- 33 "("            t    false               232 fixedToken
- 34 ")"            t    false               232 fixedToken
- 35 "#"            t    false               246 fixedToken
- 36 ">"            t    false               247 fixedToken
- 37 ">="           t    false               248 fixedToken
- 38 "<"            t    false               249 fixedToken
- 39 "<="           t    false               250 fixedToken
- 40 "*"            t    false               260 fixedToken
- 41 "/"            t    false               261 fixedToken
- 42 "\\"           t    false               262 fixedToken
- 43 "true"         t    false               276 litToken
- 44 "false"        t    false               276 litToken
- 45 ???            t    false                 0 fixedToken
- 46 option1        pr   false                29 fixedToken
- 47 option3        pr   false                31 fixedToken
- 48 option5        pr   false                33 fixedToken
- 49 option6        pr   false                34 fixedToken
- 50 option7        pr   false                35 fixedToken
- 51 option9        pr   false                37 fixedToken
- 52 option10       pr   false                38 fixedToken
+  1 identifier     t    false                22 classLitToken
+  2 numeral        t    false                23 classToken
+  3 gclString      t    false                24 classToken
+  4 doubleUnders   t    false                26 classToken
+  5 "module"       t    false                58 litToken
+  6 "private"      t    false                60 litToken
+  7 "."            t    false                62 fixedToken
+  8 "begin"        t    false                66 litToken
+  9 "end"          t    false                66 litToken
+ 10 ";"            t    false                68 fixedToken
+ 11 "constant"     t    false                82 litToken
+ 12 "="            t    false                84 fixedToken
+ 13 ","            t    false                94 fixedToken
+ 14 "integer"      t    false               106 litToken
+ 15 "Boolean"      t    false               107 litToken
+ 16 "tuple"        t    false               114 litToken
+ 17 "["            t    false               114 fixedToken
+ 18 "]"            t    false               119 fixedToken
+ 19 "skip"         t    false               127 litToken
+ 20 "read"         t    false               131 litToken
+ 21 "write"        t    false               136 litToken
+ 22 ":="           t    false               149 fixedToken
+ 23 "do"           t    false               156 litToken
+ 24 "od"           t    false               157 litToken
+ 25 "if"           t    false               161 litToken
+ 26 "fi"           t    false               162 litToken
+ 27 "[]"           t    false               166 fixedToken
+ 28 "->"           t    false               170 fixedToken
+ 29 "|"            t    false               176 fixedToken
+ 30 "&"            t    false               181 fixedToken
+ 31 "+"            t    false               194 fixedToken
+ 32 "-"            t    false               195 fixedToken
+ 33 "~"            t    false               197 fixedToken
+ 34 "("            t    false               232 fixedToken
+ 35 ")"            t    false               232 fixedToken
+ 36 "#"            t    false               246 fixedToken
+ 37 ">"            t    false               247 fixedToken
+ 38 ">="           t    false               248 fixedToken
+ 39 "<"            t    false               249 fixedToken
+ 40 "<="           t    false               250 fixedToken
+ 41 "*"            t    false               260 fixedToken
+ 42 "/"            t    false               261 fixedToken
+ 43 "\\"           t    false               262 fixedToken
+ 44 "true"         t    false               276 litToken
+ 45 "false"        t    false               276 litToken
+ 46 ???            t    false                 0 fixedToken
+ 47 option1        pr   false                29 fixedToken
+ 48 option3        pr   false                31 fixedToken
+ 49 option5        pr   false                33 fixedToken
+ 50 option6        pr   false                34 fixedToken
+ 51 option7        pr   false                35 fixedToken
+ 52 option9        pr   false                37 fixedToken
+ 53 option10       pr   false                38 fixedToken
   0 gcl            nt   false     1 false    49 fixedToken
   1 module         nt   true      9 false    56 fixedToken
   2 definitionPa   nt   true     25 true     68 fixedToken

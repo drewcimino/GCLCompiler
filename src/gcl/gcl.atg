@@ -14,16 +14,16 @@ CHARACTERS
   eol = '\r'.
   nl = '\n'.
   tab = '\t'.
-  underscore = "_".
+  underscore = "_" .
   singleQuotedStringCharacters = ANY - "'" - eol - nl.
   doubleQuotedStringCharacters = ANY - '"' - eol - nl.
-  
 
 TOKENS
-  identifier  = letter {letter | digit | underscore }.
+  identifier  = letter { letter | digit | underscore } .
   numeral = digit {digit}.
   gclString = "'" { singleQuotedStringCharacters } "'" 
   				 | '"' { doubleQuotedStringCharacters } '"'.
+  doubleUnderscore = underscore { underscore } .
 
 PRAGMAS 
 	option1 = "$"("c"|"C")("+"|"-").
@@ -263,8 +263,8 @@ multiplyOperator<^MultiplyOperator op > 	(. op = null; .)
 /*----------------------------------------------------------*/
 qualifiedIdentifier<^SemanticItem result, SymbolTable scope> 
 =
-identifier (. Identifier id = new Identifier(currentToken().spelling()); 
-			result = semantic.semanticValue(scope, id); .) .
+identifier (. Identifier id = semantic.validIdentifier(currentToken().spelling());
+			  result = semantic.semanticValue(scope, id); .) .
 /*----------------------------------------------------------*/
 variableAccessEtc<^Expression result, SymbolTable scope>  
       (. SemanticItem workValue; .)   
