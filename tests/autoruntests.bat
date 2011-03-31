@@ -23,9 +23,9 @@ java -cp . gcl.GCLCompiler ..\tests\test3 ..\tests\results\test3list.txt
 java -cp . gcl.GCLCompiler ..\tests\test4 ..\tests\results\test4list.txt 
 ..\sam3-pc.exe
 ..\macc3-pc.exe  >..\tests\results\test4.result
-::java -cp . gcl.GCLCompiler ..\tests\test4_1 ..\tests\results\test4_1list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  >..\tests\results\test4_1.result
+java -cp . gcl.GCLCompiler ..\tests\test4_1 ..\tests\results\test4_1list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  >..\tests\results\test4_1.result
 java -cp . gcl.GCLCompiler ..\tests\test5 ..\tests\results\test5list.txt 
 ..\sam3-pc.exe
 ..\macc3-pc.exe  >..\tests\results\test5.result

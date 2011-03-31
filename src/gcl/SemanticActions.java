@@ -1,8 +1,6 @@
 package gcl;
 
 import gcl.Codegen.ConstantLike;
-import gcl.SemanticActions.GCLErrorStream;
-
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -221,33 +219,23 @@ abstract class MultiplyOperator extends Operator {
 }
 
 /**
- * And operator &
+ * Boolean operators & or |
  */
-abstract class AndOperator extends Operator {
+abstract class BooleanOperator extends Operator {
 	
-	public static final AndOperator AND = new AndOperator("and", BA){
+	public static final BooleanOperator AND = new BooleanOperator("and", BA){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() == 1 && ((ConstantExpression)right).value() == 1) ? 1: 0);
 		}
 	};
 	
-	private AndOperator(final String op, final SamOp opcode) {
-		super(op, opcode);
-	}
-}
-
-/**
- * Or operator |
- */
-abstract class OrOperator extends Operator {
-	
-	public static final OrOperator OR = new OrOperator("or", BO){
+	public static final BooleanOperator OR = new BooleanOperator("or", BO){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() == 1 || ((ConstantExpression)right).value() == 1) ? 1: 0);
 		}
 	};
 	
-	private OrOperator(final String op, final SamOp opcode) {
+	private BooleanOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
 	}
 }
@@ -828,6 +816,31 @@ class TupleType extends TypeDescriptor { // mutable
 		private final TypeDescriptor type;
 	}
 }
+	
+class TypeDefinition extends TypeDescriptor{
+
+	TypeDescriptor baseType;
+	
+	public TypeDefinition(TypeDescriptor baseType) {
+		super(baseType.size());
+		this.baseType = baseType();
+	}
+	
+	@Override
+	public TypeDescriptor baseType(){
+		return baseType;
+	}
+	
+	@Override
+	public boolean isCompatible(final TypeDescriptor other) {
+		return baseType.isCompatible(other);
+	}
+	
+	@Override
+	public String toString(){
+		return baseType.toString();
+	}
+}
 
 // --------------------- Semantic Error Values ----------------------------
 
@@ -1334,16 +1347,17 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression moduloExpression(final Expression left, final Expression right) {
 		
-		int reg = codegen.loadRegister(left);
-		int original = codegen.loadRegister(left);
+		int regInner = codegen.loadRegister(left);
+		int regOuter = codegen.getTemp(1);
+		codegen.gen2Address(LD, regOuter, DREG, regInner, UNUSED);
+		
 		Codegen.Location rightLocation = codegen.buildOperands(right);
-		codegen.gen2Address(ID, reg, rightLocation);
-		codegen.gen2Address(IM, reg, rightLocation);
-		Codegen.Location regLocation = codegen.buildOperands(new VariableExpression(INTEGER_TYPE, reg, DIRECT)); // temporary)
-		codegen.gen2Address(IS, original, regLocation);
+		codegen.gen2Address(ID, regInner, rightLocation);
+		codegen.gen2Address(IM, regInner, rightLocation);
+		codegen.gen2Address(IS, regOuter, DREG, regInner, UNUSED);
 		codegen.freeTemp(rightLocation);
-		codegen.freeTemp(regLocation);
-		return new VariableExpression(INTEGER_TYPE, original, DIRECT); // temporary
+		codegen.freeTemp(DREG, regInner);
+		return new VariableExpression(INTEGER_TYPE, regOuter, DIRECT); // temporary
 	}
 	
 	/***************************************************************************
@@ -1355,7 +1369,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression andExpression(final Expression left, final Expression right) {
 		
-		Operator op = AndOperator.AND;
+		Operator op = BooleanOperator.AND;
 		
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1377,7 +1391,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression orExpression(final Expression left, final Expression right) {
 		
-		Operator op = OrOperator.OR;
+		Operator op = BooleanOperator.OR;
 		
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1445,15 +1459,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		int startLabel = codegen.getLabel();
 		codegen.genLabel('J', startLabel);
 		return new GCRecord(startLabel, 0);
-	}
-
-	/***************************************************************************
-	 * (Halt of we fall through to here).
-	 * 
-	 * @param entry GCRecord holding the labels for this statement.
-	 **************************************************************************/
-	void endDo(final GCRecord entry) {
-		// nothing
 	}
 
 	/***************************************************************************
@@ -1560,6 +1565,30 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 		SymbolTable.Entry variable = scope.newEntry("variable", id, expr);
 		CompilerOptions.message("Entering: " + variable);
+	}
+	
+	/***************************************************************************
+	 * Enter the identifier into the symbol table, marking it as a type of
+	 * the given type. This method handles global typedefinitions as well as local
+	 * typedefinitions.
+	 * 
+	 * @param scope the current symbol table
+	 * @param type the type to be of the typedefinition being defined
+	 * @param ID identifier to be defined
+	 * @param procParam the kind of procedure param it is (if any).
+	 **************************************************************************/
+	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id,
+			final ParameterKind procParam) {
+		complainIfDefinedHere(scope, id);
+		TypeDefinition typeDefinition = null;
+		if (currentLevel().isGlobal()) { // Global variable
+			typeDefinition = new TypeDefinition(type);
+		} else { // may be param or local in a proc
+			// more later -- for now throw an exception
+			throw new IllegalStateException("Missing code in declareVariable.");
+		}
+		SymbolTable.Entry typeDefinitionEntry = scope.newEntry("type", id, typeDefinition);
+		CompilerOptions.message("Entering: " + typeDefinition);
 	}
 
 	/***************************************************************************

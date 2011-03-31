@@ -6,7 +6,6 @@ public class Parser {
 	public static final int _identifier = 1;
 	public static final int _numeral = 2;
 	public static final int _gclString = 3;
-	public static final int _doubleUnderscore = 4;
 	public static final int maxT = 46;
 	public static final int _option1 = 47;
 	public static final int _option3 = 48;
@@ -123,60 +122,62 @@ public class Parser {
 	
 	void gcl() {
 		semantic.startCode();  SymbolTable scope = SymbolTable.currentScope(); 
-		while (!(la.kind == 0 || la.kind == 5)) {SynErr(47); Get();}
+		while (!(la.kind == 0 || la.kind == 4)) {SynErr(47); Get();}
 		module(scope);
-		while (la.kind == 5) {
+		while (la.kind == 4) {
 			scope = scope.openScope(true); 
-			while (!(la.kind == 0 || la.kind == 5)) {SynErr(48); Get();}
+			while (!(la.kind == 0 || la.kind == 4)) {SynErr(48); Get();}
 			module(scope);
 		}
 		semantic.finishCode(); 
 	}
 
 	void module(SymbolTable scope) {
-		Expect(5);
+		Expect(4);
 		Expect(1);
 		definitionPart(scope);
-		if (la.kind == 6) {
+		if (la.kind == 5) {
 			Get();
 			SymbolTable privateScope = scope.openScope(false); 
 			block(privateScope);
 		}
-		Expect(7);
+		Expect(6);
 	}
 
 	void definitionPart(SymbolTable scope) {
 		while (StartOf(1)) {
 			while (!(StartOf(2))) {SynErr(49); Get();}
 			definition(scope);
-			ExpectWeak(10, 3);
+			ExpectWeak(9, 3);
 		}
 	}
 
 	void block(SymbolTable scope) {
 		definitionPart(scope);
-		while (!(la.kind == 0 || la.kind == 8)) {SynErr(50); Get();}
-		Expect(8);
+		while (!(la.kind == 0 || la.kind == 7)) {SynErr(50); Get();}
+		Expect(7);
 		statementPart(scope);
-		Expect(9);
+		Expect(8);
 	}
 
 	void statementPart(SymbolTable scope) {
 		while (!(StartOf(4))) {SynErr(51); Get();}
 		statement(scope);
-		ExpectWeak(10, 5);
+		ExpectWeak(9, 5);
 		while (StartOf(6)) {
 			while (!(StartOf(4))) {SynErr(52); Get();}
 			statement(scope);
-			ExpectWeak(10, 5);
+			ExpectWeak(9, 5);
 		}
 	}
 
 	void definition(SymbolTable scope) {
 		if (la.kind == 14 || la.kind == 15 || la.kind == 16) {
 			variableDefinition(scope, ParameterKind.NOT_PARAM);
-		} else if (la.kind == 11) {
+		} else if (la.kind == 10) {
 			constantDefinition(scope, ParameterKind.NOT_PARAM);
+		} else if (la.kind == 13) {
+			typeDefinition(scope, ParameterKind.NOT_PARAM);
 		} else SynErr(53);
 	}
 
@@ -217,7 +218,7 @@ public class Parser {
 		id = new Identifier(currentToken().spelling());
 		semantic.declareVariable(scope, type, id, kindOfParam);
 		
-		while (la.kind == 13) {
+		while (la.kind == 12) {
 			Get();
 			Expect(1);
 			id = new Identifier(currentToken().spelling());
@@ -228,12 +229,22 @@ public class Parser {
 
 	void constantDefinition(SymbolTable scope, ParameterKind kindOfParam) {
 		Identifier id; Expression exp; 
-		Expect(11);
+		Expect(10);
 		Expect(1);
 		id = new Identifier(currentToken().spelling()); 
-		Expect(12);
+		Expect(11);
 		exp = expression(scope);
 		semantic.declareConstant(scope, id, exp); 
+	}
+
+	void typeDefinition(SymbolTable scope, ParameterKind kindOfParam) {
+		TypeDescriptor type; Identifier id; 
+		Expect(13);
+		type = type(scope);
+		Expect(1);
+		id = semantic.validIdentifier(currentToken().spelling());
+		semantic.declareTypeDefinition(scope, type, id, kindOfParam);
+		
 	}
 
 	Expression  expression(SymbolTable scope) {
@@ -281,7 +292,7 @@ public class Parser {
 		type = typeSymbol(scope);
 		Expect(1);
 		id = new Identifier(currentToken().spelling()); carrier.enter(type, id);
-		while (la.kind == 13) {
+		while (la.kind == 12) {
 			Get();
 			type = typeSymbol(scope);
 			Expect(1);
@@ -301,7 +312,7 @@ public class Parser {
 		Expect(20);
 		exp = variableAccessEtc(scope);
 		semantic.readVariable(exp); 
-		while (la.kind == 13) {
+		while (la.kind == 12) {
 			Get();
 			exp = variableAccessEtc(scope);
 			semantic.readVariable(exp); 
@@ -311,7 +322,7 @@ public class Parser {
 	void writeStatement(SymbolTable scope) {
 		Expect(21);
 		writeItem(scope);
-		while (la.kind == 13) {
+		while (la.kind == 12) {
 			Get();
 			writeItem(scope);
 		}
@@ -322,7 +333,7 @@ public class Parser {
 		AssignRecord expressions = new AssignRecord(); Expression exp; 
 		exp = variableAccessEtc(scope);
 		expressions.left(exp); 
-		while (la.kind == 13) {
+		while (la.kind == 12) {
 			Get();
 			exp = variableAccessEtc(scope);
 			expressions.left(exp); 
@@ -330,7 +341,7 @@ public class Parser {
 		Expect(22);
 		exp = expression(scope);
 		expressions.right(exp); 
-		while (la.kind == 13) {
+		while (la.kind == 12) {
 			Get();
 			exp = expression(scope);
 			expressions.right(exp); 
@@ -353,7 +364,6 @@ public class Parser {
 		doRecord = semantic.startDo(); 
 		guardedCommandList(scope, doRecord );
 		Expect(24);
-		semantic.endDo(doRecord); 
 	}
 
 	Expression  variableAccessEtc(SymbolTable scope) {
@@ -445,7 +455,7 @@ public class Parser {
 		RelationalOperator  op;
 		op = null; 
 		switch (la.kind) {
-		case 12: {
+		case 11: {
 			Get();
 			op = RelationalOperator.EQUAL; 
 			break;
@@ -529,7 +539,7 @@ public class Parser {
 			Get();
 			exp = expression(scope);
 			tupleFields.enter(exp); 
-			while (la.kind == 13) {
+			while (la.kind == 12) {
 				Get();
 				exp = expression(scope);
 				tupleFields.enter(exp); 
@@ -569,6 +579,12 @@ public class Parser {
 		Expect(1);
 		Identifier id = semantic.validIdentifier(currentToken().spelling());
 		result = semantic.semanticValue(scope, id); 
+		if (la.kind == 6) {
+			Get();
+			Expect(1);
+			Identifier qualified = semantic.validIdentifier(currentToken().spelling());
+			result = semantic.semanticValue(scope, qualified); 
+		}
 		return result;
 	}
 
@@ -584,15 +600,15 @@ public class Parser {
 	}
 
 	private boolean[][] set = {
-		{T,T,x,x, x,T,x,x, T,x,x,T, x,x,T,T, T,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{T,x,x,x, x,x,x,x, x,x,x,T, x,x,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{T,T,x,x, x,T,T,T, T,x,x,T, x,x,T,T, T,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{T,T,x,x, T,x,x,T, x,x,T,x, x,T,T,T, T,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{x,x,x,x, x,x,x,x, x,x,T,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{T,x,x,x, x,x,x,x, x,x,T,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{T,T,x,x, T,T,T,T, x,x,T,x, x,T,T,T, T,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{T,T,x,x, x,T,x,x, T,T,x,T, x,x,T,T, T,x,x,T, T,T,x,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{T,T,x,x, T,x,x,T, T,x,T,x, x,T,T,T, T,x,x,T, T,T,x,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,x, x,x,x,x, x,x,x,x, T,T,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, T,x,x,x, x,x,x,x},
+		{x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, T,x,x,x, x,x,x,x},
 		{x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,x, x,x,x,x, x,x,x,x, T,T,x,x}
 
 	};
@@ -627,16 +643,16 @@ class Errors {
 			case 1: s = "identifier expected"; break;
 			case 2: s = "numeral expected"; break;
 			case 3: s = "gclString expected"; break;
-			case 4: s = "doubleUnderscore expected"; break;
-			case 5: s = "\"module\" expected"; break;
-			case 6: s = "\"private\" expected"; break;
-			case 7: s = "\".\" expected"; break;
-			case 8: s = "\"begin\" expected"; break;
-			case 9: s = "\"end\" expected"; break;
-			case 10: s = "\";\" expected"; break;
-			case 11: s = "\"constant\" expected"; break;
-			case 12: s = "\"=\" expected"; break;
-			case 13: s = "\",\" expected"; break;
+			case 4: s = "\"module\" expected"; break;
+			case 5: s = "\"private\" expected"; break;
+			case 6: s = "\".\" expected"; break;
+			case 7: s = "\"begin\" expected"; break;
+			case 8: s = "\"end\" expected"; break;
+			case 9: s = "\";\" expected"; break;
+			case 10: s = "\"constant\" expected"; break;
+			case 11: s = "\"=\" expected"; break;
+			case 12: s = "\",\" expected"; break;
+			case 13: s = "\"typedefinition\" expected"; break;
 			case 14: s = "\"integer\" expected"; break;
 			case 15: s = "\"Boolean\" expected"; break;
 			case 16: s = "\"tuple\" expected"; break;
