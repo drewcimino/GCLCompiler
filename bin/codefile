@@ -3,79 +3,54 @@
      LD      R13, #16000
      LD      R0, +0(R14)
      STO     R0, +0(R15)
- LABEL J1
-     LD      R1, +0(R15)
-     LD      R0, #1
-     IC      R1, +2(R14)
-     JEQ     &4
-     LD      R0, #0
-     LD      R2, +0(R15)
-     LD      R1, #1
-     IC      R2, +4(R14)
-     JEQ     &4
-     LD      R1, #0
-     BO      R0, R1
-     IC      R0, #1
-     JNE     J2
+     WRST    +2(R14)
+     WRNL    
+     WRST    +30(R14)
+     WRNL    
+     WRST    +70(R14)
+     WRST    +74(R14)
+     WRST    +80(R14)
+     WRST    +86(R14)
+     WRST    +92(R14)
      WRI     +0(R15)
+     WRST    +102(R14)
      WRNL    
-     LD      R0, +6(R14)
-     STO     R0, +0(R15)
-     JMP     J1
- LABEL J2
-     LD      R1, +0(R15)
-     LD      R0, #1
-     IC      R1, +8(R14)
-     JGT     &4
-     LD      R0, #0
-     LD      R2, +0(R15)
-     LD      R1, #1
-     IC      R2, +10(R14)
-     JLT     &4
-     LD      R1, #0
-     BA      R0, R1
-     IC      R0, #1
-     JNE     J3
-     WRI     +0(R15)
+     WRST    +104(R14)
+     WRST    +118(R14)
      WRNL    
-     LD      R0, +0(R15)
-     IA      R0, +12(R14)
-     STO     R0, +0(R15)
-     JMP     J1
- LABEL J3
-     LD      R1, +0(R15)
-     LD      R0, #1
-     IC      R1, +14(R14)
-     JGE     &4
-     LD      R0, #0
-     LD      R2, +0(R15)
-     LD      R1, #1
-     IC      R2, +16(R14)
-     JLT     &4
-     LD      R1, #0
-     BA      R0, R1
-     IC      R0, #1
-     JNE     J4
-     LD      R0, +0(R15)
-     IM      R0, +0(R15)
-     WRI     R0
+     WRST    +142(R14)
      WRNL    
-     LD      R0, +0(R15)
-     IA      R0, +18(R14)
-     STO     R0, +0(R15)
-     JMP     J1
- LABEL J4
+     WRST    +144(R14)
+     WRNL    
+     WRST    +190(R14)
+     WRNL    
+     WRST    +218(R14)
+     WRST    +250(R14)
+     WRST    +252(R14)
+     WRST    +254(R14)
+     WRNL    
+     WRST    +256(R14)
+     WRNL    
      HALT    
  LABEL C1
-     INT      1
-     INT      1
-     INT      2
-     INT      3
-     INT      2
-     INT      5
-     INT      1
-     INT      5
-     INT      10
-     INT      3
+     INT      6
+     STRING   "This is a test of strings."
+     STRING   " You can quote or double quote strings,"
+     STRING   "and"
+     STRING   " you "
+     STRING   "can "
+     STRING   "put "
+     STRING   "several ("
+     STRING   ")"
+     STRING   "on a line.  "
+     STRING   "Colons '::' are special."
+     STRING   ""
+     STRING   "To embed single 'quotes', use the other kind."
+     STRING   "Ditto for :"double quotes:"."
+     STRING   "You can even quote a quote ( '"
+     STRING   ":""
+     STRING   "'"
+     STRING   ")"
+     STRING   "but it isn't pretty."
  LABEL V1
-     SKIP     2
+     SKIP     278
