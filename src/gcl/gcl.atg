@@ -15,8 +15,8 @@ CHARACTERS
   nl = '\n'.
   tab = '\t'.
   underscore = "_" .
-  singleQuotedStringCharacters = ANY - "'" - eol - nl.
-  doubleQuotedStringCharacters = ANY - '"' - eol - nl.
+  singleQuotedStringCharacters = ANY - "'" - eol - nl - CHR(0). // CHR(0) represents
+  doubleQuotedStringCharacters = ANY - '"' - eol - nl - CHR(0). // the null character
 
 TOKENS
   identifier  = letter { letter | digit | underscore } .
