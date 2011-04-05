@@ -496,11 +496,11 @@ public class Scanner {
 					if (ch >= '0' && ch <= '9') {AddCh(); state = 2; break;}
 					else {t.kind = 2; break loop;}
 				case 3:
-					if (ch <= 9 || ch >= 11 && ch <= 12 || ch >= 14 && ch <= '&' || ch >= '(' && ch <= 65535) {AddCh(); state = 3; break;}
+					if (ch >= 1 && ch <= 9 || ch >= 11 && ch <= 12 || ch >= 14 && ch <= '&' || ch >= '(' && ch <= 65535) {AddCh(); state = 3; break;}
 					else if (ch == 39) {AddCh(); state = 5; break;}
 					else {t.kind = noSym; break loop;}
 				case 4:
-					if (ch <= 9 || ch >= 11 && ch <= 12 || ch >= 14 && ch <= '!' || ch >= '#' && ch <= 65535) {AddCh(); state = 4; break;}
+					if (ch >= 1 && ch <= 9 || ch >= 11 && ch <= 12 || ch >= 14 && ch <= '!' || ch >= '#' && ch <= 65535) {AddCh(); state = 4; break;}
 					else if (ch == '"') {AddCh(); state = 5; break;}
 					else {t.kind = noSym; break loop;}
 				case 5:
