@@ -1,7 +1,3 @@
-java -cp . gcl.GCLCompiler ..\tests\modTest ..\tests\results\modTestlist.txt 
-..\sam3-pc.exe
-..\macc3-pc.exe <..\tests\modTest.dat >..\tests\results\modTest.result
-::-----------------------------------------------------------------------
 ::java -cp . gcl.GCLCompiler ..\tests\test0 ..\tests\results\test0list.txt 
 ::..\sam3-pc.exe
 ::..\macc3-pc.exe <..\tests\test0.dat >..\tests\results\test0.result
