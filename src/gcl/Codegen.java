@@ -269,21 +269,40 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void flushcode() {/* Nothing in this version */
 	}
-
+	
 	/**
-	 * Writes the codefile and objfile at the end of compilation.
+	 * Replaces labels with offsets and writes the codefile and objfile.
 	 */
 	public void writeInstructionList(){
+//		instructionListFirstPass();
 		for(SamInstruction instruction : instructionList){
 			codefile.println(instruction.samCode());
-			objfile.println(instruction.macCode().macCode());
+//			objfile.println(instruction.maccCode().maccCode());
 		}
 	}
+
+	/**
+	 * Finds the memory offsets of labels
+	 */
+	private void instructionListFirstPass(){
+ 		// Items should polymorphically reference the definedLabels hashTable for their offset when their maccCode.maccCode is called.
+//		for(SamInstruction instruction : instructionList){
+//			if(instruction.usesLabel()){
+//				if(definedLabels.get(instruction.label()) == null){
+//					undefinedLabels.add(label);
+//				}
+//			}
+//			else if(instruction.isLabelDefinition()){
+//				undefinedLabels.remove(label);
+//				definedLabels.put(label, instructionIndex);
+//			}
+//			instructionIndex += instruction.size();
+//		}
+	}
 	
-	// This actually writes the codefile and optionally to the listing.
+	// This adds the instruction to the list and optionally to the listing.
 	private void writeFiles(final SamInstruction instruction) {
 		instructionList.add(instruction);
-		//codefile.println(instruction.samCode());
 		CompilerOptions.listCode("$   " + instruction.samCode());
 	}
 
@@ -413,8 +432,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void genLabel(final char prefix, final int offset) {
 		String label = prefix + String.valueOf(offset);
-		undefinedLabels.remove(label);
-		definedLabels.put(label, instructionIndex);
 		writeFiles(new SamInstruction.Directive(LABEL_DIRECTIVE, label));
 	}
 
@@ -902,7 +919,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		/**
 		 * @return Returns the maccInstruction as a MaccInstruction instance.
 		 */
-		abstract public MaccInstruction macCode();
+		abstract public MaccInstruction maccCode();
 		/**
 		 * @return Returns the size, in bytes, of the instruction.
 		 */
@@ -932,7 +949,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 
 			@Override
-			public MaccInstruction macCode() {
+			public MaccInstruction maccCode() {
 				return maccCode;
 			}
 
@@ -958,7 +975,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 			@Override
 			public
-			MaccInstruction macCode() {
+			MaccInstruction maccCode() {
 				return maccCode;
 			}
 
@@ -990,7 +1007,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 
 			@Override
-			public MaccInstruction macCode() {
+			public MaccInstruction maccCode() {
 				return maccCode;
 			}
 
@@ -1040,13 +1057,17 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 
 			@Override
-			public MaccInstruction macCode() {
+			public MaccInstruction maccCode() {
 				return maccCode;
 			}
 
 			@Override
 			public int size() {
-				return mode.bytesRequired();
+				if(mode != null){
+					return mode.bytesRequired();
+				}
+				else return 2;
+				//TODO implement 2 address no mode size.
 			}
 		}
 	}
@@ -1059,6 +1080,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		/**
 		 * @return the maccInstruction as a String.
 		 */
-		abstract public String macCode();
+		abstract public String maccCode();
 	}
 }
