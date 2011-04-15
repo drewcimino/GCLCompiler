@@ -21,7 +21,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	private Collection<SamInstruction> instructionList = new ArrayList<SamInstruction>(); // Collection of instructions
 	private Hashtable<String, Integer> definedLabels = new Hashtable<String, Integer>(); // Label definitions String name -> int instructionIndex
 	private Set<String> undefinedLabels = new HashSet<String>(); // Labels referenced but not yet defined.
-	private int instructionIndex = 0; // Address offset of next instruction allocated.
 
 	Codegen(final SemanticActions.GCLErrorStream err) {
 		this.err = err;
@@ -277,7 +276,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 //		instructionListFirstPass();
 		for(SamInstruction instruction : instructionList){
 			codefile.println(instruction.samCode());
-//			objfile.println(instruction.maccCode().maccCode());
+//			objfile.println(instruction.maccInstruction().maccCode());
 		}
 	}
 
@@ -286,13 +285,14 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void instructionListFirstPass(){
  		// Items should polymorphically reference the definedLabels hashTable for their offset when their maccCode.maccCode is called.
+//		int instructionIndex = 0; // Address offset of next instruction allocated.		
 //		for(SamInstruction instruction : instructionList){
 //			if(instruction.usesLabel()){
 //				if(definedLabels.get(instruction.label()) == null){
 //					undefinedLabels.add(label);
 //				}
 //			}
-//			else if(instruction.isLabelDefinition()){
+//			else if(instruction.isLabel()){
 //				undefinedLabels.remove(label);
 //				definedLabels.put(label, instructionIndex);
 //			}
@@ -919,7 +919,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		/**
 		 * @return Returns the maccInstruction as a MaccInstruction instance.
 		 */
-		abstract public MaccInstruction maccCode();
+		abstract public MaccInstruction maccInstruction();
 		/**
 		 * @return Returns the size, in bytes, of the instruction.
 		 */
@@ -929,7 +929,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			
 			private SamOp opcode;
 			private String directive;
-			private MaccInstruction maccCode;
+			private MaccInstruction maccInstruction;
 			
 			public Directive(SamOp opcode, String directive){
 				this.opcode = opcode;
@@ -949,8 +949,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 
 			@Override
-			public MaccInstruction maccCode() {
-				return maccCode;
+			public MaccInstruction maccInstruction() {
+				return maccInstruction;
 			}
 
 			@Override
@@ -962,7 +962,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		static class ZeroAddress extends SamInstruction{
 			
 			private SamOp opcode;
-			private MaccInstruction maccCode;
+			private MaccInstruction maccInstruction;
 			
 			public ZeroAddress(final SamOp opcode){
 				this.opcode = opcode;
@@ -975,8 +975,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 			@Override
 			public
-			MaccInstruction maccCode() {
-				return maccCode;
+			MaccInstruction maccInstruction() {
+				return maccInstruction;
 			}
 
 			@Override
@@ -992,7 +992,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			private Mode mode;
 			private int base;
 			private int displacement;
-			private MaccInstruction maccCode;
+			private MaccInstruction maccInstruction;
 			
 			public OneAddress(final SamOp opcode, final Mode mode, final int base, final int displacement){
 				this.opcode = opcode;
@@ -1007,8 +1007,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 
 			@Override
-			public MaccInstruction maccCode() {
-				return maccCode;
+			public MaccInstruction maccInstruction() {
+				return maccInstruction;
 			}
 
 			@Override
@@ -1025,7 +1025,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			private int base;
 			private int displacement;
 			private String dmemLocation;
-			private MaccInstruction maccCode;
+			private MaccInstruction maccInstruction;
 			
 			public TwoAddress(final SamOp opcode, final int reg, final Mode mode, final int base, int displacement){
 				this.opcode = opcode;
@@ -1057,8 +1057,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 
 			@Override
-			public MaccInstruction maccCode() {
-				return maccCode;
+			public MaccInstruction maccInstruction() {
+				return maccInstruction;
 			}
 
 			@Override

@@ -81,6 +81,10 @@ class Identifier extends SemanticItem {
 	public Identifier(final String value) {
 		this.value = value;
 	}
+	
+	public static boolean isValid(final String value){
+		return -1 == value.indexOf("__");
+	}
 
 	public String name() {
 		return value;
@@ -977,21 +981,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if (!OKToRedefine(entry)) {
 			err.semanticError(GCLError.ALREADY_DEFINED);
 		}
-	}
-	
-	/***************************************************************************
-	 * Auxiliary Report that the identifier is already
-	 * defined in this scope if it is. Called from most declarations.
-	 * 
-	 * @param ID an Identifier
-	 * @param scope the symbol table used to find the identifier.
-	 **************************************************************************/
-	public Identifier validIdentifier(final String value) {
-		
-		if(-1 != value.indexOf("__")){
-			err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
-		}
-		return new Identifier(value);
 	}
 
 	/***************************************************************************
