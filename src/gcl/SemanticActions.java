@@ -27,7 +27,18 @@ abstract class SemanticItem {
 	public String toString() {
 		return "Unknown semantic item. ";
 	}
-
+	
+	/**
+	 * Polymorphically guarantee that a SemanticItem is a type. This is
+	 * an example of a soft cast.
+	 * 
+	 * @return "this" if it is an type and a NO_TYPE otherwise.
+	 */
+	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err) {
+		err.semanticError(GCLError.TYPE_REQUIRED);
+		return ErrorType.NO_TYPE;
+	}
+	
 	/**
 	 * Polymorphically guarantee that a SemanticItem is an expression. This is
 	 * an example of a soft cast.
@@ -332,6 +343,10 @@ class ConstantExpression extends Expression implements CodegenConstants,
 		super(type, GLOBAL_LEVEL);
 		this.value = value;
 	}
+	
+	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
+		return this;
+	} // soft cast
 
 	public String toString() {
 		return "ConstantExpression: " + value + " with type " + type();
@@ -389,6 +404,10 @@ class VariableExpression extends Expression implements CodegenConstants {
 	public VariableExpression(final TypeDescriptor type, final int register, final boolean direct) {
 		this(type, 0, register, direct);
 	}
+	
+	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
+		return this;
+	} // soft cast
 
 	public boolean needsToBePushed() { // used by parallel assignment
 		return semanticLevel() > CPU_LEVEL
@@ -574,6 +593,10 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 	public TypeDescriptor(final int size) {
 		this.size = size;
 	}
+	
+	public TypeDescriptor expectTypeDescriptor(){
+		return this;
+	} // Soft cast
 
 	/**
 	 * The number of bytes required to store a variable of this type.
@@ -667,7 +690,18 @@ class BooleanType extends TypeDescriptor implements CodegenConstants {
 	}
 
 	static public final BooleanType BOOLEAN_TYPE = new BooleanType();
+}
 
+/**Range type**/
+class RangeType extends TypeDescriptor implements CodegenConstants {
+	
+	private ConstantExpression lowerBound, upperBound;
+	
+	public RangeType(ConstantExpression lowerBound, ConstantExpression upperBound){
+		super(INT_SIZE*2);
+		this.lowerBound = lowerBound;
+		this.upperBound = upperBound;
+	}
 }
 
 /**
@@ -873,7 +907,13 @@ abstract class GCLError {
 			"ERROR -> Expression required. ");
 	static final GCLError ILLEGAL_IDENTIFIER = new Value(8,
 			"ERROR -> Illegal Spelling of Identifer. ");
-	
+	static final GCLError TYPE_MISMATCH = new Value(9,
+			"ERROR -> Incompatible Types. ");
+	static final GCLError CONSTANT_REQUIRED = new Value(10,
+			"ERROR -> Constant expression required. ");
+	static final GCLError ILLEGAL_RANGE = new Value(11,
+			"ERROR -> Illegal Range. ");
+		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(92,
 			"COMPILER ERROR -> The expression is null. ");
@@ -1503,8 +1543,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 
 	/***************************************************************************
 	 * Enter the identifier into the symbol table, marking it as a constant of
-	 * the given type. This method handles global constants as well as local
-	 * constants and procedure parameters.
+	 * the given type.
 	 * 
 	 * @param scope the current symbol table
 	 * @param type the type to be of the constant being defined
@@ -1512,20 +1551,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param procParam the kind of procedure param it is (if any).
 	 **************************************************************************/
 	void declareConstant(final SymbolTable scope, final Identifier id, final Expression expr) {
-		final TypeDescriptor type = INTEGER_TYPE;
+		
 		complainIfDefinedHere(scope, id);
-		if (expr.type() == BOOLEAN_TYPE){
-			
-		}
-		//ConstantExpression constantExpr = expr; // can't
-		if (currentLevel().isGlobal()) { // Global variable
-			codegen.reserveGlobalAddress(type.size());
-			//expr = new ConstantExpression(type, value);
-			codegen.buildOperands(expr);
-		} else { // may be param or local in a proc
-			// more later -- for now throw an exception
-			throw new IllegalStateException("Missing code in declareVariable.");
-		}
+		
+		codegen.reserveGlobalAddress(INTEGER_TYPE.size());
+		codegen.buildOperands(expr);
+		
 		SymbolTable.Entry constant = scope.newEntry("constant", id, expr);
 		CompilerOptions.message("Entering: " + constant);
 	}
@@ -1557,6 +1588,37 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
+	 * Declare Range Type.
+	 **************************************************************************/
+	TypeDescriptor declareRangeType (final SymbolTable scope, final Expression lowerBound, final Expression upperBound, final TypeDescriptor type){
+		if(!lowerBound.type().isCompatible(type)){
+			err.semanticError(GCLError.TYPE_MISMATCH, type.toString() + " expected as lower bound");
+		}
+		if(!upperBound.type().isCompatible(type)){
+			err.semanticError(GCLError.TYPE_MISMATCH, type.toString() + " expected as upper bound");
+		}
+		// type check for hard cast
+		if(!(lowerBound instanceof ConstantExpression)){
+			err.semanticError(GCLError.CONSTANT_REQUIRED, "lower bound");
+			return ErrorType.NO_TYPE;
+		}
+		// type check for hard cast
+		if(!(upperBound instanceof ConstantExpression)){
+			err.semanticError(GCLError.CONSTANT_REQUIRED, "upper bound");
+			return ErrorType.NO_TYPE;
+		}
+		// safe hard cast
+		ConstantExpression lower = (ConstantExpression)lowerBound;
+		ConstantExpression upper = (ConstantExpression)upperBound;
+		
+		if(lower.value() > upper.value()){
+			err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lower.value() + ")cannot be greater than upper bound (" + upper.value() + ")"); 
+		}
+		// TODO generate constants
+		return new RangeType(lower, upper);
+	}
+	
+	/***************************************************************************
 	 * Enter the identifier into the symbol table, marking it as a type of
 	 * the given type. This method handles global typedefinitions as well as local
 	 * typedefinitions.
@@ -1578,6 +1640,15 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 		SymbolTable.Entry typeDefinitionEntry = scope.newEntry("type", id, typeDefinition);
 		CompilerOptions.message("Entering: " + typeDefinition);
+	}
+	
+	/***************************************************************************
+	 * Complain if invalid spelling.
+	 **************************************************************************/
+	void checkIdentifierSpelling(final String identifier){
+		if(!Identifier.isValid(identifier)){
+	   		err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
+	    }
 	}
 
 	/***************************************************************************

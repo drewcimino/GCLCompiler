@@ -98,6 +98,12 @@ variableDefinition<SymbolTable scope, ParameterKind kindOfParam>
 		.)
 	}.
 /*----------------------------------------------------------*/
+rangeType<^TypeDescriptor result, TypeDescriptor baseType, SymbolTable scope>
+=
+	(. Expression lowerBound; Expression upperBound; .)
+	"range" "[" expression<^lowerBound, scope> ".." expression<^upperBound, scope> "]"
+	(. result = semantic.declareRangeType(scope, lowerBound, upperBound, baseType);.).
+/*----------------------------------------------------------*/
 typeDefinition<SymbolTable scope, ParameterKind kindOfParam>
 	(. TypeDescriptor type; String result; .)
 =
@@ -106,13 +112,13 @@ typeDefinition<SymbolTable scope, ParameterKind kindOfParam>
 /*----------------------------------------------------------*/
 type<^TypeDescriptor result, SymbolTable scope>	(. result = noType; .)
 =
-	typeSymbol<^result, scope>   |  tupleType<^result, scope>.
+	typeSymbol<^result, scope> [ rangeType<^result, result, scope> ]  |  tupleType<^result, scope>.
 /*----------------------------------------------------------*/
 typeSymbol<^TypeDescriptor result, SymbolTable scope> (. result = null; SemanticItem id = null; .)
 =
 	"integer" (. result = integerType; .)
 	| "Boolean" (. result = booleanType; .)
-	| qualifiedIdentifier<^id, scope> (. result = ((TypeDefinition)id).baseType(); .) . /*Change to soft cast*/
+	| qualifiedIdentifier<^id, scope> (. result = id.expectTypeDescriptor(err); .) .
 /*----------------------------------------------------------*/
 tupleType<^TupleType result, SymbolTable scope>   (. TypeDescriptor type; Identifier id; String name; .)
 =
@@ -223,18 +229,6 @@ factor<^Expression result, SymbolTable scope>  (. result = null; .)
 	|booleanConstant
 	  (. result = new ConstantExpression (booleanType, (Boolean.parseBoolean(currentToken().spelling())) ? 1 : 0);
 	  .)
-	 
-	/* (.
-	 	String value = currentToken().spelling();				// Alternative assignment
-	 															// procedure
-	 	if (value.equalsIgnoreCase("true")){					//
-	 		result = new ConstantExpression (booleanType, 1);	// Doesn't use ternary
-	 	}														// operator
-	 	else if (value.equalsIgnoreCase("false")){				//
-	 		result = new ConstantExpression (booleanType, 0);	//
-	 	}														//
-	  .) */
-	 
 	| "(" expression<^result, scope> ")"
 	| (. Expression exp;
 		 ExpressionList tupleFields = new ExpressionList();
@@ -285,9 +279,7 @@ validIdentifier<^String result>
 =
 identifier 
 	(. result = currentToken().spelling();
-   	   if(!Identifier.isValid(result)){
-   	   		err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
-       }
+	   semantic.checkIdentifierSpelling(result);
 	.).
 /*----------------------------------------------------------*/
 variableAccessEtc<^Expression result, SymbolTable scope>  
