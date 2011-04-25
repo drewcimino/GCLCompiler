@@ -827,7 +827,7 @@ class TypeDefinition extends TypeDescriptor{
 	
 	public TypeDefinition(TypeDescriptor baseType) {
 		super(baseType.size());
-		this.baseType = baseType();
+		this.baseType = baseType;
 	}
 	
 	@Override

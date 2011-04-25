@@ -133,8 +133,9 @@ public class Parser {
 	}
 
 	void module(SymbolTable scope) {
+		String result; 
 		Expect(4);
-		Expect(1);
+		result = validIdentifier();
 		definitionPart(scope);
 		if (la.kind == 5) {
 			Get();
@@ -142,6 +143,17 @@ public class Parser {
 			block(privateScope);
 		}
 		Expect(6);
+	}
+
+	String  validIdentifier() {
+		String  result;
+		Expect(1);
+		result = currentToken().spelling();
+		  if(!Identifier.isValid(result)){
+		  		err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
+		  }
+		
+		return result;
 	}
 
 	void definitionPart(SymbolTable scope) {
@@ -172,7 +184,7 @@ public class Parser {
 	}
 
 	void definition(SymbolTable scope) {
-		if (la.kind == 14 || la.kind == 15 || la.kind == 16) {
+		if (StartOf(7)) {
 			variableDefinition(scope, ParameterKind.NOT_PARAM);
 		} else if (la.kind == 10) {
 			constantDefinition(scope, ParameterKind.NOT_PARAM);
@@ -212,39 +224,37 @@ public class Parser {
 	}
 
 	void variableDefinition(SymbolTable scope, ParameterKind kindOfParam) {
-		TypeDescriptor type; Identifier id; 
+		String result; TypeDescriptor type; Identifier id; 
 		type = type(scope);
-		Expect(1);
-		id = new Identifier(currentToken().spelling());
+		result = validIdentifier();
+		id = new Identifier(result);
 		semantic.declareVariable(scope, type, id, kindOfParam);
 		
 		while (la.kind == 12) {
 			Get();
-			Expect(1);
-			id = new Identifier(currentToken().spelling());
+			result = validIdentifier();
+			id = new Identifier(result);
 			semantic.declareVariable(scope, type, id, kindOfParam);
 			
 		}
 	}
 
 	void constantDefinition(SymbolTable scope, ParameterKind kindOfParam) {
-		Identifier id; Expression exp; 
+		String result; Identifier id; Expression exp; 
 		Expect(10);
-		Expect(1);
-		id = new Identifier(currentToken().spelling()); 
+		result = validIdentifier();
+		id = new Identifier(result); 
 		Expect(11);
 		exp = expression(scope);
 		semantic.declareConstant(scope, id, exp); 
 	}
 
 	void typeDefinition(SymbolTable scope, ParameterKind kindOfParam) {
-		TypeDescriptor type; Identifier id; 
+		TypeDescriptor type; String result; 
 		Expect(13);
 		type = type(scope);
-		Expect(1);
-		id = semantic.validIdentifier(currentToken().spelling());
-		semantic.declareTypeDefinition(scope, type, id, kindOfParam);
-		
+		result = validIdentifier();
+		semantic.declareTypeDefinition(scope, type, new Identifier(result), kindOfParam); 
 	}
 
 	Expression  expression(SymbolTable scope) {
@@ -262,7 +272,7 @@ public class Parser {
 	TypeDescriptor  type(SymbolTable scope) {
 		TypeDescriptor  result;
 		result = noType; 
-		if (la.kind == 14 || la.kind == 15) {
+		if (la.kind == 1 || la.kind == 14 || la.kind == 15) {
 			result = typeSymbol(scope);
 		} else if (la.kind == 16) {
 			result = tupleType(scope);
@@ -272,34 +282,55 @@ public class Parser {
 
 	TypeDescriptor  typeSymbol(SymbolTable scope) {
 		TypeDescriptor  result;
-		result = null; Identifier id = null; 
+		result = null; SemanticItem id = null; 
 		if (la.kind == 14) {
 			Get();
 			result = integerType; 
 		} else if (la.kind == 15) {
 			Get();
 			result = booleanType; 
+		} else if (la.kind == 1) {
+			id = qualifiedIdentifier(scope);
+			result = ((TypeDefinition)id).baseType(); 
 		} else SynErr(56);
 		return result;
 	}
 
 	TupleType  tupleType(SymbolTable scope) {
 		TupleType  result;
-		TypeDescriptor type; Identifier id; 
+		TypeDescriptor type; Identifier id; String name; 
 		TypeList carrier = new TypeList(); 
 		Expect(16);
 		Expect(17);
 		type = typeSymbol(scope);
-		Expect(1);
-		id = new Identifier(currentToken().spelling()); carrier.enter(type, id);
+		name = validIdentifier();
+		id = new Identifier(name); carrier.enter(type, id);
 		while (la.kind == 12) {
 			Get();
 			type = typeSymbol(scope);
 			Expect(1);
-			id = new Identifier(currentToken().spelling()); carrier.enter(type, id);
+			id = new Identifier(name); carrier.enter(type, id);
 		}
 		Expect(18);
 		result = new TupleType(carrier); 
+		return result;
+	}
+
+	SemanticItem  qualifiedIdentifier(SymbolTable scope) {
+		SemanticItem  result;
+		Expect(1);
+		String value = currentToken().spelling();
+		  Identifier id = new Identifier(value);
+		result = semantic.semanticValue(scope, id);
+		
+		if (la.kind == 6) {
+			Get();
+			Expect(1);
+			String value2 = currentToken().spelling();
+			  Identifier qualified = new Identifier(value2);
+			result = semantic.semanticValue(scope, qualified);
+			
+		}
 		return result;
 	}
 
@@ -376,7 +407,7 @@ public class Parser {
 
 	void writeItem(SymbolTable scope) {
 		Expression exp; 
-		if (StartOf(7)) {
+		if (StartOf(8)) {
 			exp = expression(scope);
 			semantic.writeExpression(exp); 
 		} else if (la.kind == 3) {
@@ -418,7 +449,7 @@ public class Parser {
 		Expression  left;
 		Expression right; RelationalOperator op; 
 		left = simpleExpr(scope);
-		if (StartOf(8)) {
+		if (StartOf(9)) {
 			op = relationalOperator();
 			right = simpleExpr(scope);
 			left = semantic.compareExpression(left, op, right); 
@@ -429,7 +460,7 @@ public class Parser {
 	Expression  simpleExpr(SymbolTable scope) {
 		Expression  left;
 		Expression right; AddOperator op; left = null; 
-		if (StartOf(9)) {
+		if (StartOf(10)) {
 			if (la.kind == 31) {
 				Get();
 			}
@@ -574,20 +605,6 @@ public class Parser {
 		} else SynErr(63);
 	}
 
-	SemanticItem  qualifiedIdentifier(SymbolTable scope) {
-		SemanticItem  result;
-		Expect(1);
-		Identifier id = semantic.validIdentifier(currentToken().spelling());
-		result = semantic.semanticValue(scope, id); 
-		if (la.kind == 6) {
-			Get();
-			Expect(1);
-			Identifier qualified = semantic.validIdentifier(currentToken().spelling());
-			result = semantic.semanticValue(scope, qualified); 
-		}
-		return result;
-	}
-
 
 
 	public void Parse() {
@@ -601,12 +618,13 @@ public class Parser {
 
 	private boolean[][] set = {
 		{T,T,x,x, T,x,x,T, x,x,T,x, x,T,T,T, T,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,T,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
-		{T,x,x,x, x,x,x,x, x,x,T,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{x,T,x,x, x,x,x,x, x,x,T,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{T,T,x,x, x,x,x,x, x,x,T,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{T,T,x,x, T,T,T,T, x,x,T,x, x,T,T,T, T,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{T,T,x,x, T,x,x,T, T,x,T,x, x,T,T,T, T,x,x,T, T,T,x,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,x,T, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
 		{x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,x, x,x,x,x, x,x,x,x, T,T,x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, T,x,x,x, x,x,x,x},
 		{x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,x, x,x,x,x, x,x,x,x, T,T,x,x}

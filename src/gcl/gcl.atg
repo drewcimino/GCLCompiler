@@ -54,7 +54,8 @@ gcl
 /*----------------------------------------------------------*/
 module<SymbolTable scope> 
 = 
-	"module" identifier
+	(. String result; .)
+	"module" validIdentifier<^result>
 		definitionPart<scope>
 	[ "private" (. SymbolTable privateScope = scope.openScope(false); .)
 		block<privateScope>
@@ -77,49 +78,49 @@ definition<SymbolTable scope>
 	typeDefinition<scope, ParameterKind.NOT_PARAM>.
 /*----------------------------------------------------------*/
 constantDefinition<SymbolTable scope, ParameterKind kindOfParam>
-	(. Identifier id; Expression exp; .)
+	(. String result; Identifier id; Expression exp; .)
 =
-	"constant" identifier 
-	(. id = new Identifier(currentToken().spelling()); .)
+	"constant" validIdentifier<^result>
+	(. id = new Identifier(result); .)
 	"=" expression<^exp,scope>
 	(. semantic.declareConstant(scope, id, exp); .) .
 /*----------------------------------------------------------*/
 variableDefinition<SymbolTable scope, ParameterKind kindOfParam> 
-	(. TypeDescriptor type; Identifier id; .)
+	(. String result; TypeDescriptor type; Identifier id; .)
 =
-	type<^type, scope> identifier
-		(. 	id = new Identifier(currentToken().spelling());
+	type<^type, scope> validIdentifier<^result>
+		(. 	id = new Identifier(result);
 			semantic.declareVariable(scope, type, id, kindOfParam);
 		.)
-	{	"," identifier
-		(. 	id = new Identifier(currentToken().spelling());
+	{	"," validIdentifier<^result>
+		(. 	id = new Identifier(result);
 			semantic.declareVariable(scope, type, id, kindOfParam);
 		.)
 	}.
 /*----------------------------------------------------------*/
 typeDefinition<SymbolTable scope, ParameterKind kindOfParam>
-	(. TypeDescriptor type; Identifier id; .)
+	(. TypeDescriptor type; String result; .)
 =
-	"typedefinition" type<^type, scope> qualifiedIdentifier<^id, scope>
-	(. semantic.declareTypeDefinition(scope, type, id, kindOfParam); .).
+	"typedefinition" type<^type, scope> validIdentifier<^result>
+	(. semantic.declareTypeDefinition(scope, type, new Identifier(result), kindOfParam); .).
 /*----------------------------------------------------------*/
 type<^TypeDescriptor result, SymbolTable scope>	(. result = noType; .)
 =
 	typeSymbol<^result, scope>   |  tupleType<^result, scope>.
 /*----------------------------------------------------------*/
-typeSymbol<^TypeDescriptor result, SymbolTable scope> (. result = null; Identifier id = null; .)
+typeSymbol<^TypeDescriptor result, SymbolTable scope> (. result = null; SemanticItem id = null; .)
 =
 	"integer" (. result = integerType; .)
 	| "Boolean" (. result = booleanType; .)
-	| qualifiedIdentifier<^id, scope> (. result = ((TypeDefinition)semantic.semanticValue(scope, id)).baseType(); .) .
+	| qualifiedIdentifier<^id, scope> (. result = ((TypeDefinition)id).baseType(); .) . /*Change to soft cast*/
 /*----------------------------------------------------------*/
-tupleType<^TupleType result, SymbolTable scope>   (. TypeDescriptor type; Identifier id; .)
+tupleType<^TupleType result, SymbolTable scope>   (. TypeDescriptor type; Identifier id; String name; .)
 =
 	(. TypeList carrier = new TypeList(); .)
-	"tuple" "[" typeSymbol<^type,scope> identifier 
-		(.id = new Identifier(currentToken().spelling()); carrier.enter(type, id);.)
+	"tuple" "[" typeSymbol<^type,scope> validIdentifier<^name> 
+		(.id = new Identifier(name); carrier.enter(type, id);.)
 		{  "," typeSymbol<^type,scope> identifier 
-		(.id = new Identifier(currentToken().spelling()); carrier.enter(type, id);.) 
+		(.id = new Identifier(name); carrier.enter(type, id);.) 
 		} 
 	"]"
      (. result = new TupleType(carrier); .) .
@@ -270,21 +271,24 @@ qualifiedIdentifier<^SemanticItem result, SymbolTable scope>
 =
 identifier 
 	(. String value = currentToken().spelling();
-   	   if(!Identifier.isValid(value)){
-   	   		err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
-       }
        Identifier id = new Identifier(value);
 	   result = semantic.semanticValue(scope, id);
 	.)
 ["." identifier
 	(. String value2 = currentToken().spelling();
-   	   if(!Identifier.isValid(value2)){
-   	   		err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
-       }
        Identifier qualified = new Identifier(value2);
 	   result = semantic.semanticValue(scope, qualified);
 	.)
 ].
+/*----------------------------------------------------------*/
+validIdentifier<^String result> 
+=
+identifier 
+	(. result = currentToken().spelling();
+   	   if(!Identifier.isValid(result)){
+   	   		err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
+       }
+	.).
 /*----------------------------------------------------------*/
 variableAccessEtc<^Expression result, SymbolTable scope>  
       (. SemanticItem workValue; .)   
