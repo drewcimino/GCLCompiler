@@ -1,6 +1,8 @@
 package gcl;
 
 import gcl.Codegen.ConstantLike;
+import gcl.Codegen.Location;
+
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -453,6 +455,21 @@ class AssignRecord extends SemanticItem {
 		if (left == null) {
 			left = new ErrorExpression("$ Pushing bad lhs in assignment.");
 		}
+		// range type
+		if (left.type() instanceof RangeType){
+			RangeType leftType = (RangeType) left.type();
+			// check value in compiler
+			if(left instanceof ConstantExpression){
+				ConstantExpression leftConstant = (ConstantExpression)left;
+				if(leftConstant.value() < leftType.lowerBound() || leftConstant.value() > leftType.upperBound()){
+					err.SemanticError(GCLError.VALUE_OUT_OF_RANGE);
+				}
+			}
+			// check value during runtime
+			else{
+				// TRNG code
+			}
+		}
 		lhs.add(left);
 	}
 
@@ -695,12 +712,21 @@ class BooleanType extends TypeDescriptor implements CodegenConstants {
 /**Range type**/
 class RangeType extends TypeDescriptor implements CodegenConstants {
 	
-	private ConstantExpression lowerBound, upperBound;
+	private final int lowerBound, upperBound;
+	private final Location location;
+	private final TypeDescriptor baseType;
 	
-	public RangeType(ConstantExpression lowerBound, ConstantExpression upperBound){
+	public RangeType(final TypeDescriptor baseType, final int lowerBound, final int upperBound, final Location location){
 		super(INT_SIZE*2);
 		this.lowerBound = lowerBound;
 		this.upperBound = upperBound;
+		this.location = location;
+		this.baseType = baseType;
+	}
+	
+	@Override
+	public TypeDescriptor baseType(){
+		return baseType;
 	}
 }
 
@@ -1590,32 +1616,38 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	/***************************************************************************
 	 * Declare Range Type.
 	 **************************************************************************/
-	TypeDescriptor declareRangeType (final SymbolTable scope, final Expression lowerBound, final Expression upperBound, final TypeDescriptor type){
-		if(!lowerBound.type().isCompatible(type)){
-			err.semanticError(GCLError.TYPE_MISMATCH, type.toString() + " expected as lower bound");
+	TypeDescriptor declareRangeType (final SymbolTable scope, final Expression lowerBound, final Expression upperBound, final TypeDescriptor baseType){
+		TypeDescriptor result = null;
+		if(!lowerBound.type().isCompatible(baseType)){
+			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as lower bound");
 		}
-		if(!upperBound.type().isCompatible(type)){
-			err.semanticError(GCLError.TYPE_MISMATCH, type.toString() + " expected as upper bound");
+		if(!upperBound.type().isCompatible(baseType)){
+			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as upper bound");
 		}
 		// type check for hard cast
 		if(!(lowerBound instanceof ConstantExpression)){
 			err.semanticError(GCLError.CONSTANT_REQUIRED, "lower bound");
-			return ErrorType.NO_TYPE;
+			result = ErrorType.NO_TYPE;
 		}
 		// type check for hard cast
 		if(!(upperBound instanceof ConstantExpression)){
 			err.semanticError(GCLError.CONSTANT_REQUIRED, "upper bound");
-			return ErrorType.NO_TYPE;
+			result = ErrorType.NO_TYPE;
 		}
 		// safe hard cast
-		ConstantExpression lower = (ConstantExpression)lowerBound;
-		ConstantExpression upper = (ConstantExpression)upperBound;
-		
-		if(lower.value() > upper.value()){
-			err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lower.value() + ")cannot be greater than upper bound (" + upper.value() + ")"); 
+		if(result != ErrorType.NO_TYPE){
+			ConstantExpression lower = (ConstantExpression)lowerBound;
+			ConstantExpression upper = (ConstantExpression)upperBound;
+			
+			if(lower.value() > upper.value()){
+				err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lower.value() + ")cannot be greater than upper bound (" + upper.value() + ")"); 
+			}
+			// TODO generate constants
+			result = new RangeType(baseType, lower.value(), upper.value(), codegen.buildOperands(lower));
+			codegen.buildOperands(upper);
+			codegen.reserveGlobalAddress(result.size());
 		}
-		// TODO generate constants
-		return new RangeType(lower, upper);
+		return result;
 	}
 	
 	/***************************************************************************
