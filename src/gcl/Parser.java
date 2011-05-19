@@ -377,11 +377,11 @@ public class Parser {
 	void assignStatement(SymbolTable scope) {
 		AssignRecord expressions = new AssignRecord(); Expression exp; 
 		exp = variableAccessEtc(scope);
-		expressions.left(exp); 
+		expressions.left(exp,err); 
 		while (la.kind == 12) {
 			Get();
 			exp = variableAccessEtc(scope);
-			expressions.left(exp); 
+			expressions.left(exp,err); 
 		}
 		Expect(24);
 		exp = expression(scope);

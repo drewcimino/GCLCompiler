@@ -156,8 +156,8 @@ writeItem<SymbolTable scope> (. Expression exp; .)
 assignStatement<SymbolTable scope>
 		(. AssignRecord expressions = new AssignRecord(); Expression exp; .)
 =
-	variableAccessEtc<^exp, scope> (. expressions.left(exp); .)
-		{ "," variableAccessEtc<^exp, scope> (. expressions.left(exp); .) }
+	variableAccessEtc<^exp, scope> (. expressions.left(exp,err); .) // Should we be passing err?
+		{ "," variableAccessEtc<^exp, scope> (. expressions.left(exp,err); .) } // Ditto?
 		":="
 		expression<^exp, scope> (. expressions.right(exp); .)
 		{ "," expression<^exp, scope> (. expressions.right(exp); .) }

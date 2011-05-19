@@ -2,6 +2,7 @@ package gcl;
 
 import gcl.Codegen.ConstantLike;
 import gcl.Codegen.Location;
+import gcl.SemanticActions.GCLErrorStream;
 
 import java.util.Iterator;
 import java.util.ArrayList;
@@ -31,10 +32,8 @@ abstract class SemanticItem {
 	}
 	
 	/**
-	 * Polymorphically guarantee that a SemanticItem is a type. This is
-	 * an example of a soft cast.
-	 * 
-	 * @return "this" if it is an type and a NO_TYPE otherwise.
+	 * Soft Cast
+	 * @return "this" if it is a type and a NO_TYPE otherwise.
 	 */
 	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err) {
 		err.semanticError(GCLError.TYPE_REQUIRED);
@@ -42,14 +41,12 @@ abstract class SemanticItem {
 	}
 	
 	/**
-	 * Polymorphically guarantee that a SemanticItem is an expression. This is
-	 * an example of a soft cast.
-	 * 
+	 * Soft Cast
 	 * @return "this" if it is an expression and an ErrorExpression otherwise.
 	 */
 	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
 		err.semanticError(GCLError.EXPRESSION_REQUIRED);
-		return new ErrorExpression("Expression Required");
+		return new ErrorExpression("$ Expression Required");
 	}
 
 	public int semanticLevel() {
@@ -74,10 +71,8 @@ class SemanticError extends SemanticItem implements GeneralError {
 	}
 
 	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
-		// Soft cast
+		// Don't complain on error records. The complaint previously occurred when this object was created.
 		return new ErrorExpression("$ Expression Required");
-		// Don't complain on error records. The complaint previously
-		// occurred when this object was created.
 	}
 
 	public String toString() {
@@ -307,7 +302,7 @@ abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
 
 	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
 		return this;
-	} // soft cast
+	}
 
 	public void discard() {
 	} // (Function return only) default is to do nothing
@@ -345,10 +340,6 @@ class ConstantExpression extends Expression implements CodegenConstants,
 		super(type, GLOBAL_LEVEL);
 		this.value = value;
 	}
-	
-	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
-		return this;
-	} // soft cast
 
 	public String toString() {
 		return "ConstantExpression: " + value + " with type " + type();
@@ -406,10 +397,6 @@ class VariableExpression extends Expression implements CodegenConstants {
 	public VariableExpression(final TypeDescriptor type, final int register, final boolean direct) {
 		this(type, 0, register, direct);
 	}
-	
-	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
-		return this;
-	} // soft cast
 
 	public boolean needsToBePushed() { // used by parallel assignment
 		return semanticLevel() > CPU_LEVEL
@@ -451,7 +438,7 @@ class AssignRecord extends SemanticItem {
 	private final ArrayList<Expression> lhs = new ArrayList<Expression>(3);
 	private final ArrayList<Expression> rhs = new ArrayList<Expression>(3);
 	
-	public void left(Expression left) {
+	public void left(Expression left, GCLErrorStream err) { // Importing SemanticActions.GCLErrorStream was necessary
 		if (left == null) {
 			left = new ErrorExpression("$ Pushing bad lhs in assignment.");
 		}
@@ -462,7 +449,7 @@ class AssignRecord extends SemanticItem {
 			if(left instanceof ConstantExpression){
 				ConstantExpression leftConstant = (ConstantExpression)left;
 				if(leftConstant.value() < leftType.lowerBound() || leftConstant.value() > leftType.upperBound()){
-					err.SemanticError(GCLError.VALUE_OUT_OF_RANGE);
+					err.semanticError(GCLError.VALUE_OUT_OF_RANGE);
 				}
 			}
 			// check value during runtime
@@ -555,8 +542,7 @@ class ParameterKind extends SemanticItem {
 }
 
 /** Used to carry information for guarded commands such as if and do */
-class GCRecord extends SemanticItem // For guarded command statements if and do.
-{
+class GCRecord extends SemanticItem { // For guarded command statements if and do.
 	private final int outLabel;
 	private int nextLabel;
 	
@@ -613,7 +599,7 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 	
 	public TypeDescriptor expectTypeDescriptor(){
 		return this;
-	} // Soft cast
+	}
 
 	/**
 	 * The number of bytes required to store a variable of this type.
@@ -663,13 +649,6 @@ class ErrorType extends TypeDescriptor implements GeneralError {
 
 	public String toString() {
 		return "Error type.";
-	}
-
-	public Expression expectExpression() // Soft cast
-	{
-		return new ErrorExpression("Expression Required");
-		// Don't complain on error records. The complaint previously
-		// occurred when this object was referenced.
 	}
 
 	public static final ErrorType NO_TYPE = new ErrorType();
@@ -724,6 +703,14 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 		this.baseType = baseType;
 	}
 	
+	public int upperBound() {
+		return upperBound;
+	}
+
+	public int lowerBound() {
+		return lowerBound;
+	}
+
 	@Override
 	public TypeDescriptor baseType(){
 		return baseType;
@@ -939,6 +926,8 @@ abstract class GCLError {
 			"ERROR -> Constant expression required. ");
 	static final GCLError ILLEGAL_RANGE = new Value(11,
 			"ERROR -> Illegal Range. ");
+	static final GCLError VALUE_OUT_OF_RANGE = new Value(12,
+			"ERROR -> Value out of acceptable range. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(92,
