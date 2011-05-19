@@ -867,31 +867,6 @@ class TupleType extends TypeDescriptor { // mutable
 		private final TypeDescriptor type;
 	}
 }
-	
-class TypeDefinition extends TypeDescriptor{
-
-	TypeDescriptor baseType;
-	
-	public TypeDefinition(TypeDescriptor baseType) {
-		super(baseType.size());
-		this.baseType = baseType;
-	}
-	
-	@Override
-	public TypeDescriptor baseType(){
-		return baseType;
-	}
-	
-	@Override
-	public boolean isCompatible(final TypeDescriptor other) {
-		return baseType.isCompatible(other);
-	}
-	
-	@Override
-	public String toString(){
-		return baseType.toString();
-	}
-}
 
 // --------------------- Semantic Error Values ----------------------------
 
@@ -1563,7 +1538,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param scope the current symbol table
 	 * @param type the type to be of the constant being defined
 	 * @param ID identifier to be defined
-	 * @param procParam the kind of procedure param it is (if any).
 	 **************************************************************************/
 	void declareConstant(final SymbolTable scope, final Identifier id, final Expression expr) {
 		
@@ -1641,26 +1615,16 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	
 	/***************************************************************************
 	 * Enter the identifier into the symbol table, marking it as a type of
-	 * the given type. This method handles global typedefinitions as well as local
-	 * typedefinitions.
+	 * the given type.
 	 * 
 	 * @param scope the current symbol table
 	 * @param type the type to be of the typedefinition being defined
 	 * @param ID identifier to be defined
-	 * @param procParam the kind of procedure param it is (if any).
 	 **************************************************************************/
-	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id,
-			final ParameterKind procParam) {
+	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id){
 		complainIfDefinedHere(scope, id);
-		TypeDefinition typeDefinition = null;
-		if (currentLevel().isGlobal()) { // Global variable
-			typeDefinition = new TypeDefinition(type);
-		} else { // may be param or local in a proc
-			// more later -- for now throw an exception
-			throw new IllegalStateException("Missing code in declareVariable.");
-		}
-		SymbolTable.Entry typeDefinitionEntry = scope.newEntry("type", id, typeDefinition);
-		CompilerOptions.message("Entering: " + typeDefinition);
+		scope.newEntry("type", id, type);
+		CompilerOptions.message("Entering: " + type);
 	}
 	
 	/***************************************************************************

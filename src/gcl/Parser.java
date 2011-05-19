@@ -185,9 +185,9 @@ public class Parser {
 		if (StartOf(7)) {
 			variableDefinition(scope, ParameterKind.NOT_PARAM);
 		} else if (la.kind == 10) {
-			constantDefinition(scope, ParameterKind.NOT_PARAM);
+			constantDefinition(scope);
 		} else if (la.kind == 17) {
-			typeDefinition(scope, ParameterKind.NOT_PARAM);
+			typeDefinition(scope);
 		} else SynErr(55);
 	}
 
@@ -237,7 +237,7 @@ public class Parser {
 		}
 	}
 
-	void constantDefinition(SymbolTable scope, ParameterKind kindOfParam) {
+	void constantDefinition(SymbolTable scope) {
 		String result; Identifier id; Expression exp; 
 		Expect(10);
 		result = validIdentifier();
@@ -247,12 +247,12 @@ public class Parser {
 		semantic.declareConstant(scope, id, exp); 
 	}
 
-	void typeDefinition(SymbolTable scope, ParameterKind kindOfParam) {
+	void typeDefinition(SymbolTable scope) {
 		TypeDescriptor type; String result; 
 		Expect(17);
 		type = type(scope);
 		result = validIdentifier();
-		semantic.declareTypeDefinition(scope, type, new Identifier(result), kindOfParam); 
+		semantic.declareTypeDefinition(scope, type, new Identifier(result)); 
 	}
 
 	Expression  expression(SymbolTable scope) {
@@ -296,7 +296,7 @@ public class Parser {
 
 	TypeDescriptor  typeSymbol(SymbolTable scope) {
 		TypeDescriptor  result;
-		result = null; SemanticItem id = null; 
+		result = null; SemanticItem typeItem = null; 
 		if (la.kind == 18) {
 			Get();
 			result = integerType; 
@@ -304,8 +304,8 @@ public class Parser {
 			Get();
 			result = booleanType; 
 		} else if (la.kind == 1) {
-			id = qualifiedIdentifier(scope);
-			result = id.expectTypeDescriptor(err); 
+			typeItem = qualifiedIdentifier(scope);
+			result = typeItem.expectTypeDescriptor(err); 
 		} else SynErr(58);
 		return result;
 	}
