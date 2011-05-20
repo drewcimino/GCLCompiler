@@ -134,7 +134,8 @@ tupleType<^TupleType result, SymbolTable scope>   (. TypeDescriptor type; Identi
 statement<SymbolTable scope>
 =
 	emptyStatement | readStatement<scope>  | writeStatement<scope> 
-	| assignStatement<scope> | ifStatement<scope> | doStatement<scope>.
+	| assignStatement<scope> | ifStatement<scope> | doStatement<scope>
+	| forStatement<scope>.
 /*----------------------------------------------------------*/
 emptyStatement     = "skip".
 /*----------------------------------------------------------*/
@@ -167,6 +168,12 @@ doStatement<SymbolTable scope>  (. GCRecord doRecord; .)
 =
 	"do" (. doRecord = semantic.startDo(); .)  guardedCommandList<scope, doRecord > 
 	"od" .
+/*----------------------------------------------------------*/
+forStatement<SymbolTable scope>  (. ForRecord forRecord; Expression bounds; .)
+=
+	"forall" variableAccessEtc<^bounds, scope> (. forRecord = semantic.startFor(bounds.type().expectRangeType(err)); .) "->"
+	statementPart<scope> 
+	"llarof" (. semantic.endFor(forRecord, bounds.type().expectRangeType(err)); .).
 /*----------------------------------------------------------*/
 ifStatement<SymbolTable scope>  (. GCRecord ifRecord; .)
 =

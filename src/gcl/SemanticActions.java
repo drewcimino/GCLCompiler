@@ -475,21 +475,6 @@ class AssignRecord extends SemanticItem {
 		if (left == null) {
 			left = new ErrorExpression("$ Pushing bad lhs in assignment.");
 		}
-		// range type
-		if (left.type() instanceof RangeType){
-			RangeType leftType = (RangeType) left.type();
-			// check value in compiler
-			if(left instanceof ConstantExpression){
-				ConstantExpression leftConstant = (ConstantExpression)left;
-				if(leftConstant.value() < leftType.lowerBound() || leftConstant.value() > leftType.upperBound()){
-					err.semanticError(GCLError.VALUE_OUT_OF_RANGE);
-				}
-			}
-			// check value during runtime
-			else{
-				// TRNG code
-			}
-		}
 		lhs.add(left);
 	}
 
@@ -514,13 +499,35 @@ class AssignRecord extends SemanticItem {
 	 * @return true if there are the same number of operands on the left and
 	 *         right and the types are compatible, etc.
 	 */
-	public boolean verify(final SemanticActions.GCLErrorStream err) { // incomplete. More tests needed.
+	public boolean verify(final SemanticActions.GCLErrorStream err) {
 		boolean result = true;
 		if (lhs.size() != rhs.size()) {
 			result = false;
 			err.semanticError(GCLError.LISTS_MUST_MATCH);
 		}
-		// more
+		else{
+			for(int variableIndex = 0; variableIndex < lhs.size(); variableIndex++){
+				if(!left(variableIndex).type().isCompatible(right(variableIndex).type())){
+					result = false;
+					err.semanticError(GCLError.TYPE_MISMATCH);
+				}
+				else if (left(variableIndex).type() instanceof RangeType){
+					RangeType leftRangeType = left(variableIndex).type().expectRangeType(err);
+					// constant folding
+					if(right(variableIndex) instanceof ConstantExpression){
+						ConstantExpression rightConstant = right(variableIndex).expectConstantExpression(err);
+						if(rightConstant.value() < leftRangeType.lowerBound() || rightConstant.value() > leftRangeType.upperBound()){
+							result = false;
+							err.semanticError(GCLError.VALUE_OUT_OF_RANGE);
+						}
+					}
+					// runtime bounds check
+					else{
+						//TODO runtime bounds check (TRNG)
+					}
+				}
+			}
+		}
 		return result;
 	}
 
@@ -616,6 +623,25 @@ class GCRecord extends SemanticItem { // For guarded command statements if and d
 	}
 }
 
+/** Used to carry information for for loops */
+class ForRecord extends SemanticItem {
+	private int forLabel;
+	private VariableExpression counter;
+	
+	public ForRecord(int forLabel, VariableExpression counter){
+		this.forLabel = forLabel;
+		this.counter = counter;
+	}
+	
+	public int forLabel(){
+		return forLabel;
+	}
+	
+	public VariableExpression counter(){
+		return counter;
+	}
+}
+
 // --------------------- Types ---------------------------------
 /**
  * Root of the type hierarchy. Objects to represent gcl types such as integer
@@ -633,6 +659,15 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 	@Override
 	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err){
 		return this;
+	}
+	
+	/**
+	 * Soft Cast
+	 * @return "this" if it is a range type and a NO_TYPE otherwise.
+	 */
+	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err) {
+		err.semanticError(GCLError.TYPE_REQUIRED);
+		return ErrorRangeType.NO_TYPE;
 	}
 
 	/**
@@ -744,6 +779,15 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 	public int lowerBound() {
 		return lowerBound;
 	}
+	
+	public Location location() {
+		return location;
+	}
+	
+	@Override
+	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err){
+		return this;
+	}
 
 	@Override
 	public TypeDescriptor baseType(){
@@ -759,6 +803,20 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 	public boolean isCompatible(final TypeDescriptor other) {
 		return baseType.isCompatible(other);
 	}
+}
+
+/** Used to represent errors where ConstantExpressions are expected. Immutable. */
+class ErrorRangeType extends RangeType implements GeneralError, CodegenConstants {
+
+	public ErrorRangeType() {
+		super(ErrorType.NO_TYPE, -1, -1, new Location(DMEM, UNUSED, UNUSED));
+	}
+
+	public String toString() {
+		return "error range type.";
+	}
+	
+	public static final ErrorRangeType NO_TYPE = new ErrorRangeType();
 }
 
 /**
@@ -1291,7 +1349,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if (stringConstant instanceof GeneralError) {
 			return;
 		}
-		codegen.reserveGlobalAddress(stringConstant.size());
 		Codegen.Location stringLocation = codegen.buildOperands(stringConstant);
 		codegen.gen1Address(WRST, stringLocation);
 	}
@@ -1522,6 +1579,37 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		int startLabel = codegen.getLabel();
 		codegen.genLabel('J', startLabel);
 		return new GCRecord(startLabel, 0);
+	}
+	
+	/***************************************************************************
+	 * Create a ForRecord for the for loop.
+	 * Generates and initializes the counter; 
+	 * Generate the for label at the beginning.
+	 * 
+	 * @return ForRecord entry with a counter and a label for this statement.
+	 **************************************************************************/
+	ForRecord startFor(RangeType bounds) {
+		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.getTemp(1), true);
+		codegen.gen2Address(LDA, forCounter.offset(), bounds.location());
+		int forLabel = codegen.getLabel();
+		codegen.genLabel('F', forLabel);
+		return new ForRecord(forLabel, forCounter);
+	}
+	
+	/***************************************************************************
+	 * Increments the for counter.
+	 * Tests counter in bounds.
+	 * Jumps to top.
+	 * Frees counter.
+	 * 
+	 * @param entry ForRecord holding the counter and label for this statement.
+	 **************************************************************************/
+	void endFor(final ForRecord entry, RangeType bounds) {
+		
+		codegen.gen2Address(IA, entry.counter().offset(), "#1");
+		codegen.gen2Address(TRNG, entry.counter().offset(), bounds.location());
+		codegen.genJumpLabel(JMP, 'F', entry.forLabel());
+		codegen.freeTemp(codegen.buildOperands(entry.counter()));
 	}
 
 	/***************************************************************************
