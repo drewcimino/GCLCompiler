@@ -381,11 +381,11 @@ public class Parser {
 	void assignStatement(SymbolTable scope) {
 		AssignRecord expressions = new AssignRecord(); Expression exp; 
 		exp = variableAccessEtc(scope);
-		expressions.left(exp,err); 
+		expressions.left(exp); 
 		while (la.kind == 12) {
 			Get();
 			exp = variableAccessEtc(scope);
-			expressions.left(exp,err); 
+			expressions.left(exp); 
 		}
 		Expect(24);
 		exp = expression(scope);
@@ -416,14 +416,14 @@ public class Parser {
 	}
 
 	void forStatement(SymbolTable scope) {
-		ForRecord forRecord; Expression bounds; 
+		ForRecord forRecord; Expression control; 
 		Expect(27);
-		bounds = variableAccessEtc(scope);
-		forRecord = semantic.startFor(bounds.type().expectRangeType(err)); 
+		control = variableAccessEtc(scope);
+		forRecord = semantic.startForall(control, err); 
 		Expect(28);
 		statementPart(scope);
 		Expect(29);
-		semantic.endFor(forRecord, bounds.type().expectRangeType(err)); 
+		semantic.endForall(forRecord, control, err); 
 	}
 
 	Expression  variableAccessEtc(SymbolTable scope) {

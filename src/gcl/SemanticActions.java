@@ -342,8 +342,7 @@ class ErrorExpression extends Expression implements GeneralError,
  * Constant expressions such as 53 and true. Immutable. Use this for boolean
  * constants also, with 1 for true and 0 for false.
  */
-class ConstantExpression extends Expression implements CodegenConstants,
-		Codegen.ConstantLike {
+class ConstantExpression extends Expression implements CodegenConstants, Codegen.ConstantLike {
 	
 	private final int value;
 
@@ -471,7 +470,7 @@ class AssignRecord extends SemanticItem {
 	private final ArrayList<Expression> lhs = new ArrayList<Expression>(3);
 	private final ArrayList<Expression> rhs = new ArrayList<Expression>(3);
 	
-	public void left(Expression left, GCLErrorStream err) { // Importing SemanticActions.GCLErrorStream was necessary
+	public void left(Expression left) {
 		if (left == null) {
 			left = new ErrorExpression("$ Pushing bad lhs in assignment.");
 		}
@@ -1387,6 +1386,16 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -integer (in register)
 	 **************************************************************************/
 	Expression addExpression(final Expression left, final AddOperator op, final Expression right) {
+		if(left instanceof ErrorExpression){
+			return left;
+		}
+		if(right instanceof ErrorExpression){
+			return right;
+		}
+		if(!left.type().isCompatible(IntegerType.INTEGER_TYPE) || !right.type().isCompatible(IntegerType.INTEGER_TYPE)){
+			err.semanticError(GCLError.TYPE_MISMATCH, "addExpression expected integers");
+			return new ErrorExpression("Incompatible Types");
+		}
 		if(left instanceof ConstantExpression && right instanceof ConstantExpression) {
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
 		}
@@ -1443,14 +1452,17 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression multiplyExpression(final Expression left, final MultiplyOperator op, final Expression right) {
 		
+		if(!left.type().isCompatible(IntegerType.INTEGER_TYPE) || !right.type().isCompatible(IntegerType.INTEGER_TYPE)){
+			err.semanticError(GCLError.TYPE_MISMATCH, "multiplyExpression expected integers");
+			return new ErrorExpression("Incompatible Types");
+		}
 		if(left instanceof ConstantExpression && right instanceof ConstantExpression) {
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
 		}
-		
+
 		if (op == MultiplyOperator.MODULO){
 			return moduloExpression(left,right);
 		}
-		
 		int reg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
 		codegen.gen2Address(op.opcode(), reg, rightLocation);
@@ -1490,11 +1502,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression andExpression(final Expression left, final Expression right) {
 		
 		Operator op = BooleanOperator.AND;
-		
+		if(!left.type().isCompatible(BooleanType.BOOLEAN_TYPE) || !right.type().isCompatible(BooleanType.BOOLEAN_TYPE)){
+			err.semanticError(GCLError.TYPE_MISMATCH);
+			return new ErrorExpression("Incompatible Types: Expected boolean.");
+		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
 		}
-		
 		int reg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
 		codegen.gen2Address(op.opcode(), reg, rightLocation);
@@ -1512,11 +1526,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression orExpression(final Expression left, final Expression right) {
 		
 		Operator op = BooleanOperator.OR;
-		
+		if(!left.type().isCompatible(BooleanType.BOOLEAN_TYPE) || !right.type().isCompatible(BooleanType.BOOLEAN_TYPE)){
+			err.semanticError(GCLError.TYPE_MISMATCH);
+			return new ErrorExpression("Incompatible Types: Expected boolean.");
+		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
 		}
-		
 		int reg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
 		codegen.gen2Address(op.opcode(), reg, rightLocation);
@@ -1533,11 +1549,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -0(false) or 1(true) (in register)
 	 **************************************************************************/
 	Expression compareExpression(final Expression left, final RelationalOperator op, final Expression right) {
-		
+		if(!left.type().isCompatible(right.type())){
+			err.semanticError(GCLError.TYPE_MISMATCH);
+			return new ErrorExpression("Incompatible Types: Expected boolean.");
+		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
 		}
-		
 		int booleanreg = codegen.getTemp(1);
 		int resultreg = codegen.loadRegister(left);
 		Codegen.Location rightLocation = codegen.buildOperands(right);
@@ -1588,11 +1606,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * 
 	 * @return ForRecord entry with a counter and a label for this statement.
 	 **************************************************************************/
-	ForRecord startFor(RangeType bounds) {
+	ForRecord startForall(Expression control, SemanticActions.GCLErrorStream err) {
+		RangeType bounds = control.type().expectRangeType(err);
 		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.getTemp(1), true);
-		codegen.gen2Address(LDA, forCounter.offset(), bounds.location());
+		codegen.gen2Address(LD, forCounter.offset(), "#" + bounds.lowerBound());
 		int forLabel = codegen.getLabel();
 		codegen.genLabel('F', forLabel);
+		codegen.gen2Address(STO, forCounter.offset(), codegen.buildOperands(control));
 		return new ForRecord(forLabel, forCounter);
 	}
 	
@@ -1604,11 +1624,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * 
 	 * @param entry ForRecord holding the counter and label for this statement.
 	 **************************************************************************/
-	void endFor(final ForRecord entry, RangeType bounds) {
-		
-		codegen.gen2Address(IA, entry.counter().offset(), "#1");
-		codegen.gen2Address(TRNG, entry.counter().offset(), bounds.location());
-		codegen.genJumpLabel(JMP, 'F', entry.forLabel());
+	void endForall(final ForRecord entry, Expression control, SemanticActions.GCLErrorStream err) {
+		RangeType bounds = control.type().expectRangeType(err);
+		codegen.gen2Address(INC, entry.counter().offset(), "1");
+		codegen.gen2Address(IC, entry.counter().offset(), "#" + bounds.upperBound());
+		codegen.genJumpLabel(JLE, 'F', entry.forLabel());
 		codegen.freeTemp(codegen.buildOperands(entry.counter()));
 	}
 

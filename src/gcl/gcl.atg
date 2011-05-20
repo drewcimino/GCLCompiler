@@ -157,8 +157,8 @@ writeItem<SymbolTable scope> (. Expression exp; .)
 assignStatement<SymbolTable scope>
 		(. AssignRecord expressions = new AssignRecord(); Expression exp; .)
 =
-	variableAccessEtc<^exp, scope> (. expressions.left(exp,err); .) // Should we be passing err?
-		{ "," variableAccessEtc<^exp, scope> (. expressions.left(exp,err); .) } // Ditto?
+	variableAccessEtc<^exp, scope> (. expressions.left(exp); .)
+		{ "," variableAccessEtc<^exp, scope> (. expressions.left(exp); .) }
 		":="
 		expression<^exp, scope> (. expressions.right(exp); .)
 		{ "," expression<^exp, scope> (. expressions.right(exp); .) }
@@ -169,11 +169,11 @@ doStatement<SymbolTable scope>  (. GCRecord doRecord; .)
 	"do" (. doRecord = semantic.startDo(); .)  guardedCommandList<scope, doRecord > 
 	"od" .
 /*----------------------------------------------------------*/
-forStatement<SymbolTable scope>  (. ForRecord forRecord; Expression bounds; .)
+forStatement<SymbolTable scope>  (. ForRecord forRecord; Expression control; .)
 =
-	"forall" variableAccessEtc<^bounds, scope> (. forRecord = semantic.startFor(bounds.type().expectRangeType(err)); .) "->"
+	"forall" variableAccessEtc<^control, scope> (. forRecord = semantic.startForall(control, err); .) "->"
 	statementPart<scope> 
-	"llarof" (. semantic.endFor(forRecord, bounds.type().expectRangeType(err)); .).
+	"llarof" (. semantic.endForall(forRecord, control, err); .).
 /*----------------------------------------------------------*/
 ifStatement<SymbolTable scope>  (. GCRecord ifRecord; .)
 =
@@ -203,7 +203,7 @@ relationalExpr<^Expression left, SymbolTable scope>
 	(. Expression right; RelationalOperator op; .)
 =
 	simpleExpr<^left, scope>
-		[ relationalOperator<^op>   simpleExpr<^right, scope>
+		[ relationalOperator<^op> simpleExpr<^right, scope>
 		(. left = semantic.compareExpression(left, op, right); .)
 		].
 /*----------------------------------------------------------*/
@@ -223,7 +223,7 @@ simpleExpr<^Expression left, SymbolTable scope>
 term<^Expression left, SymbolTable scope>
 	(. Expression right; MultiplyOperator op; left = null; .)
 =
-	factor<^ left, scope> { multiplyOperator<^op>  factor<^right, scope>
+	factor<^left, scope> { multiplyOperator<^op>  factor<^right, scope>
 	(. left = semantic.multiplyExpression(left, op, right); .) } .
 
 /*----------------------------------------------------------*/
