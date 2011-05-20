@@ -244,7 +244,7 @@ public class Parser {
 		id = new Identifier(result); 
 		Expect(11);
 		exp = expression(scope);
-		semantic.declareConstant(scope, id, exp); 
+		semantic.declareConstant(scope, id, exp.expectConstantExpression(err)); 
 	}
 
 	void typeDefinition(SymbolTable scope) {

@@ -138,6 +138,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		Mode mode = DREG;
 		int base = -1, displacement = 0;
 		VariableExpression variable = (VariableExpression) semanticItem;
+			// ^Safe cast, other instances of Expressions factored out above
 		int itsLevel = variable.semanticLevel();
 		boolean isDirect = variable.isDirect();
 		if (itsLevel == CPU_LEVEL) {
@@ -148,13 +149,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			mode = isDirect ? INDXD : IINDXD;
 			base = VARIABLE_BASE;
 			displacement = variable.offset();
-		} else if (itsLevel == STACK_LEVEL) // This may be wrong. JB.
-		{
-			base = variable.offset();
+		} else if (itsLevel == STACK_LEVEL) { // This may be wrong. JB.
 			mode = IREG;
+			base = variable.offset();
 			displacement = UNUSED;
-		} else // its level > 1;
-		{
+		} else { // its level > 1;
 			int currentlevel = currentLevel.value();
 			// more later for function/procedure blocks
 		}

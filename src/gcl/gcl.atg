@@ -83,7 +83,7 @@ constantDefinition<SymbolTable scope>
 	"constant" validIdentifier<^result>
 	(. id = new Identifier(result); .)
 	"=" expression<^exp,scope>
-	(. semantic.declareConstant(scope, id, exp); .) .
+	(. semantic.declareConstant(scope, id, exp.expectConstantExpression(err)); .) .
 /*----------------------------------------------------------*/
 variableDefinition<SymbolTable scope, ParameterKind kindOfParam> 
 	(. String result; TypeDescriptor type; Identifier id; .)

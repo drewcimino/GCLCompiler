@@ -70,6 +70,7 @@ class SemanticError extends SemanticItem implements GeneralError {
 		CompilerOptions.message(message);
 	}
 
+	@Override
 	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
 		// Don't complain on error records. The complaint previously occurred when this object was created.
 		return new ErrorExpression("$ Expression Required");
@@ -91,7 +92,7 @@ class Identifier extends SemanticItem {
 	}
 	
 	public static boolean isValid(final String value){
-		return -1 == value.indexOf("__");
+		return (-1 == value.indexOf("__"));
 	}
 
 	public String name() {
@@ -299,7 +300,17 @@ abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
 	public TypeDescriptor type() {
 		return type;
 	}
+	
+	/**
+	 * Soft Cast
+	 * @return "this" if it is a ConstantExpression and an ErrorConstantExpression otherwise.
+	 */
+	public ConstantExpression expectConstantExpression(final SemanticActions.GCLErrorStream err) {
+		err.semanticError(GCLError.EXPRESSION_REQUIRED);
+		return new ErrorConstantExpression("$ ConstantExpression Required");
+	}
 
+	@Override
 	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
 		return this;
 	}
@@ -340,6 +351,11 @@ class ConstantExpression extends Expression implements CodegenConstants,
 		super(type, GLOBAL_LEVEL);
 		this.value = value;
 	}
+	
+	@Override
+	public ConstantExpression expectConstantExpression(final SemanticActions.GCLErrorStream err) {
+		return this;
+	}
 
 	public String toString() {
 		return "ConstantExpression: " + value + " with type " + type();
@@ -358,6 +374,23 @@ class ConstantExpression extends Expression implements CodegenConstants,
 
 	public int value() {
 		return value;
+	}
+}
+
+/** Used to represent errors where ConstantExpressions are expected. Immutable. */
+class ErrorConstantExpression extends ConstantExpression implements GeneralError,
+		CodegenConstants {
+	
+	private final String message;
+
+	public ErrorConstantExpression(final String message) {
+		super(ErrorType.NO_TYPE, GLOBAL_LEVEL);
+		this.message = message;
+		CompilerOptions.message(message);
+	}
+
+	public String toString() {
+		return message;
 	}
 }
 
@@ -597,7 +630,8 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 		this.size = size;
 	}
 	
-	public TypeDescriptor expectTypeDescriptor(){
+	@Override
+	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err){
 		return this;
 	}
 
@@ -714,6 +748,16 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 	@Override
 	public TypeDescriptor baseType(){
 		return baseType;
+	}
+	
+	@Override
+	public String toString(){
+		return "rangetype: " + baseType.toString();
+	}
+	
+	@Override
+	public boolean isCompatible(final TypeDescriptor other) {
+		return baseType.isCompatible(other);
 	}
 }
 
@@ -1231,7 +1275,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return;
 		}
 		if (!expression.type().isCompatible(INTEGER_TYPE)) {
-			err.semanticError(GCLError.INTEGER_REQUIRED, "   while Reading");
+			err.semanticError(GCLError.INTEGER_REQUIRED, "   while Reading"+expression.type().toString());
 			return;
 		}
 		Codegen.Location expressionLocation = codegen.buildOperands(expression);
@@ -1539,12 +1583,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param type the type to be of the constant being defined
 	 * @param ID identifier to be defined
 	 **************************************************************************/
-	void declareConstant(final SymbolTable scope, final Identifier id, final Expression expr) {
+	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expr) {
 		
 		complainIfDefinedHere(scope, id);
 		
-		codegen.reserveGlobalAddress(INTEGER_TYPE.size());
-		codegen.buildOperands(expr);
+		//codegen.reserveGlobalAddress(INTEGER_TYPE.size());
+		//codegen.buildOperands(expr);
 		
 		SymbolTable.Entry constant = scope.newEntry("constant", id, expr);
 		CompilerOptions.message("Entering: " + constant);
@@ -1580,37 +1624,48 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * Declare Range Type.
 	 **************************************************************************/
 	TypeDescriptor declareRangeType (final SymbolTable scope, final Expression lowerBound, final Expression upperBound, final TypeDescriptor baseType){
-		TypeDescriptor result = null;
+		boolean valid = true;
+		
+		// complain on type mismatch
 		if(!lowerBound.type().isCompatible(baseType)){
+			valid = false;
 			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as lower bound");
 		}
 		if(!upperBound.type().isCompatible(baseType)){
+			valid = false;
 			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as upper bound");
 		}
-		// type check for hard cast
+		// complain lower not constant
 		if(!(lowerBound instanceof ConstantExpression)){
+			valid = false;
 			err.semanticError(GCLError.CONSTANT_REQUIRED, "lower bound");
-			result = ErrorType.NO_TYPE;
 		}
-		// type check for hard cast
+		// complain upper not constant
 		if(!(upperBound instanceof ConstantExpression)){
+			valid = false;
 			err.semanticError(GCLError.CONSTANT_REQUIRED, "upper bound");
-			result = ErrorType.NO_TYPE;
 		}
-		// safe hard cast
-		if(result != ErrorType.NO_TYPE){
+		if(valid){
+			// safe hard cast
 			ConstantExpression lower = (ConstantExpression)lowerBound;
 			ConstantExpression upper = (ConstantExpression)upperBound;
 			
+			// complain lower > upper
 			if(lower.value() > upper.value()){
 				err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lower.value() + ")cannot be greater than upper bound (" + upper.value() + ")"); 
+				valid = false;
 			}
-			// TODO generate constants
-			result = new RangeType(baseType, lower.value(), upper.value(), codegen.buildOperands(lower));
-			codegen.buildOperands(upper);
-			codegen.reserveGlobalAddress(result.size());
+			if(valid){
+				// declare lower and upper constants
+				Location lowerLocation = codegen.buildOperands(lower);
+				codegen.buildOperands(upper);
+				
+				// declare and return rangetype
+				return new RangeType(baseType, lower.value(), upper.value(), lowerLocation);
+			}
+			return ErrorType.NO_TYPE;
 		}
-		return result;
+		return ErrorType.NO_TYPE;
 	}
 	
 	/***************************************************************************
