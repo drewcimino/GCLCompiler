@@ -154,7 +154,7 @@ abstract class Operator extends SemanticItem implements Mnemonic {
  * Relational operators such as = and # Typesafe enumeration pattern as well as
  * immutable
  */
-abstract class RelationalOperator extends Operator {
+abstract class RelationalOperator extends Operator {// TODO Expand Relational Operators to accept booleans as operands. (i . i) || (b . b)
 	
 	public static final RelationalOperator EQUAL = new RelationalOperator("equal", JEQ){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){

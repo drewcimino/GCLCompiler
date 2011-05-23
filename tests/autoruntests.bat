@@ -53,37 +53,37 @@ java -cp . gcl.GCLCompiler ..\tests\test10_1 ..\tests\results\test10_1list.txt
 ..\macc3-pc.exe  >..\tests\results\test10_1.result
 java -cp . gcl.GCLCompiler ..\tests\test10_2 ..\tests\results\test10_2list.txt 
 ..\sam3-pc.exe
-::java -cp . gcl.GCLCompiler ..\tests\test11 ..\tests\results\test11list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11.result
-::java -cp . gcl.GCLCompiler ..\tests\test11_1 ..\tests\results\test11_1list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_1.result
-::java -cp . gcl.GCLCompiler ..\tests\test11_2 ..\tests\results\test11_2list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_2.result
-::java -cp . gcl.GCLCompiler ..\tests\test11_3 ..\tests\results\test11_3list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_3.result
-::java -cp . gcl.GCLCompiler ..\tests\test11_3.fix ..\tests\results\test11_3fixlist.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_3fix.result
-::java -cp . gcl.GCLCompiler ..\tests\test11_4 ..\tests\results\test11_4list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_4.result
-::java -cp . gcl.GCLCompiler ..\tests\test11_5 ..\tests\results\test11_5list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_5.result
-::java -cp . gcl.GCLCompiler ..\tests\test11_6 ..\tests\results\test11_6list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_6.result
-::java -cp . gcl.GCLCompiler ..\tests\Test11_7 ..\tests\results\Test11_7list.txt 
-::java -cp . gcl.GCLCompiler ..\tests\test11_8 ..\tests\results\test11_8list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe   >..\tests\results\test11_8.result
-::java -cp . gcl.GCLCompiler ..\tests\test11_9 ..\tests\results\test11_9list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_9.result
+java -cp . gcl.GCLCompiler ..\tests\test11 ..\tests\results\test11list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11.result
+java -cp . gcl.GCLCompiler ..\tests\test11_1 ..\tests\results\test11_1list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_1.result
+java -cp . gcl.GCLCompiler ..\tests\test11_2 ..\tests\results\test11_2list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_2.result
+java -cp . gcl.GCLCompiler ..\tests\test11_3 ..\tests\results\test11_3list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_3.result
+java -cp . gcl.GCLCompiler ..\tests\test11_3.fix ..\tests\results\test11_3fixlist.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_3fix.result
+java -cp . gcl.GCLCompiler ..\tests\test11_4 ..\tests\results\test11_4list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_4.result
+java -cp . gcl.GCLCompiler ..\tests\test11_5 ..\tests\results\test11_5list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_5.result
+java -cp . gcl.GCLCompiler ..\tests\test11_6 ..\tests\results\test11_6list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_6.result
+java -cp . gcl.GCLCompiler ..\tests\Test11_7 ..\tests\results\Test11_7list.txt 
+java -cp . gcl.GCLCompiler ..\tests\test11_8 ..\tests\results\test11_8list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe   >..\tests\results\test11_8.result
+java -cp . gcl.GCLCompiler ..\tests\test11_9 ..\tests\results\test11_9list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_9.result
 ::java -cp . gcl.GCLCompiler ..\tests\test12 ..\tests\results\test12list.txt 
 ::..\sam3-pc.exe
 ::..\macc3-pc.exe   >..\tests\results\test12.result
