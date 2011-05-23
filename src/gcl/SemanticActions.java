@@ -664,19 +664,12 @@ class AssignRecord extends SemanticItem {
 					result = false;
 					err.semanticError(GCLError.TYPE_MISMATCH);
 				}
-				else if (left(variableIndex).type() instanceof RangeType){
+				else if (left(variableIndex).type() instanceof RangeType && right(variableIndex) instanceof ConstantExpression){
 					RangeType leftRangeType = left(variableIndex).type().expectRangeType(err);
-					// constant folding
-					if(right(variableIndex) instanceof ConstantExpression){
-						ConstantExpression rightConstant = right(variableIndex).expectConstantExpression(err);
-						if(rightConstant.value() < leftRangeType.lowerBound() || rightConstant.value() > leftRangeType.upperBound()){
-							result = false;
-							err.semanticError(GCLError.VALUE_OUT_OF_RANGE);
-						}
-					}
-					// runtime bounds check
-					else{
-						//TODO runtime bounds check (TRNG)
+					ConstantExpression rightConstant = right(variableIndex).expectConstantExpression(err);
+					if(rightConstant.value() < leftRangeType.lowerBound() || rightConstant.value() > leftRangeType.upperBound()){
+						result = false;
+						err.semanticError(GCLError.VALUE_OUT_OF_RANGE);
 					}
 				}
 			}
@@ -984,7 +977,7 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 	private final TypeDescriptor componentType;
 	
 	public ArrayType(final RangeType subscriptType, final TypeDescriptor componentType){
-		super(0);// TODO determine size of a new arraytype and call super(size)
+		super(componentType.size()*(1+subscriptType.upperBound()-subscriptType.lowerBound()));
 		this.subscriptType = subscriptType;
 		this.componentType = componentType;
 	}
@@ -996,7 +989,7 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 	
 	@Override
 	public String toString(){
-		return "arraytype: " + componentType.toString();
+		return "arraytype: " + componentType.toString() + " [" + subscriptType.lowerBound() + ".." + subscriptType.upperBound() + "]";
 	}
 	
 	@Override
@@ -1503,6 +1496,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		for (i = entries - 1; i >= 0; --i) {
 			Expression rightExpression = expressions.right(i);
 			Expression leftExpression = expressions.left(i);
+			// TRNG for assignment to RangeType expressions. runtime bounds check.
+			if (leftExpression.type() instanceof RangeType && !(rightExpression instanceof ConstantExpression)){
+				codegen.gen2Address(TRNG, codegen.loadRegister(rightExpression), leftExpression.type().expectRangeType(err).location());
+			}
 			if (rightExpression.needsToBePushed()) {
 				popExpression(leftExpression);
 			} else { // the item wasn't pushed, so normal copy
