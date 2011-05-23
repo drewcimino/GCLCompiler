@@ -98,11 +98,17 @@ variableDefinition<SymbolTable scope, ParameterKind kindOfParam>
 		.)
 	}.
 /*----------------------------------------------------------*/
+arrayType<^TypeDescriptor result, TypeDescriptor componentType, SymbolTable scope>
+=
+	(. SemanticItem subscriptType; .)
+	"array" "[" qualifiedIdentifier<^subscriptType, scope> "]"
+	(. result = semantic.declareArrayType(subscriptType.expectTypeDescriptor(err).expectRangeType(err), componentType); .).
+/*----------------------------------------------------------*/
 rangeType<^TypeDescriptor result, TypeDescriptor baseType, SymbolTable scope>
 =
 	(. Expression lowerBound; Expression upperBound; .)
 	"range" "[" expression<^lowerBound, scope> ".." expression<^upperBound, scope> "]"
-	(. result = semantic.declareRangeType(scope, lowerBound, upperBound, baseType);.).
+	(. result = semantic.declareRangeType(lowerBound, upperBound, baseType); .).
 /*----------------------------------------------------------*/
 typeDefinition<SymbolTable scope>
 	(. TypeDescriptor type; String result; .)
@@ -112,7 +118,7 @@ typeDefinition<SymbolTable scope>
 /*----------------------------------------------------------*/
 type<^TypeDescriptor result, SymbolTable scope>	(. result = noType; .)
 =
-	typeSymbol<^result, scope> [ rangeType<^result, result, scope> ]  |  tupleType<^result, scope>.
+	typeSymbol<^result, scope> [ arrayType<^result, result, scope> | rangeType<^result, result, scope> ]  |  tupleType<^result, scope>.
 /*----------------------------------------------------------*/
 typeSymbol<^TypeDescriptor result, SymbolTable scope> (. result = null; SemanticItem typeItem = null; .)
 =
@@ -157,8 +163,8 @@ writeItem<SymbolTable scope> (. Expression exp; .)
 assignStatement<SymbolTable scope>
 		(. AssignRecord expressions = new AssignRecord(); Expression exp; .)
 =
-	variableAccessEtc<^exp, scope> (. expressions.left(exp); .)
-		{ "," variableAccessEtc<^exp, scope> (. expressions.left(exp); .) }
+	variableAccessEtc<^exp, scope> (. expressions.left(exp.expectVariableExpression(err)); .)
+		{ "," variableAccessEtc<^exp, scope> (. expressions.left(exp.expectVariableExpression(err)); .) }
 		":="
 		expression<^exp, scope> (. expressions.right(exp); .)
 		{ "," expression<^exp, scope> (. expressions.right(exp); .) }

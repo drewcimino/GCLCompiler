@@ -75,6 +75,12 @@ class SemanticError extends SemanticItem implements GeneralError {
 		// Don't complain on error records. The complaint previously occurred when this object was created.
 		return new ErrorExpression("$ Expression Required");
 	}
+	
+	@Override
+	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err) {
+		// Don't complain on error records. The complaint previously occurred when this object was created.
+		return ErrorType.NO_TYPE;
+	}
 
 	public String toString() {
 		return message;
@@ -131,6 +137,14 @@ abstract class Operator extends SemanticItem implements Mnemonic {
 	}
 	
 	public abstract ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right);
+	/**
+	 * Tells the caller if the operands are valid and complains if necessary. NOTE: It is the callers responsibility to return an ErrorExpression.
+	 * @param left operand to the left.
+	 * @param right operand to the right.
+	 * @param err GCLErrorStream on which to complain. 
+	 * @return true if the operands are valid; false otherwise.
+	 */
+	public abstract boolean validOperands(Expression left, Expression right, GCLErrorStream err);
 
 	private final String value;
 	private final SamOp opcode;
@@ -146,30 +160,90 @@ abstract class RelationalOperator extends Operator {
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() == ((ConstantExpression)right).value()) ? 1: 0);
 		}
+		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){// may operate on all types
+			if(left instanceof GeneralError || right instanceof GeneralError){
+				return false;
+			}
+			if(!left.type().isCompatible(right.type())){
+				err.semanticError(GCLError.TYPE_MISMATCH, "Equal operator expected same type");
+				return false;
+			}
+			return true;
+		}
 	};
 	public static final RelationalOperator NOT_EQUAL = new RelationalOperator("notequal", JNE){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() != ((ConstantExpression)right).value()) ? 1: 0);
+		}
+		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){// may operate on all types
+			if(left instanceof GeneralError || right instanceof GeneralError){
+				return false;
+			}
+			if(!left.type().isCompatible(right.type())){
+				err.semanticError(GCLError.TYPE_MISMATCH, "Not Equal operator expected same type");
+				return false;
+			}
+			return true;
 		}
 	};
 	public static final RelationalOperator GREATER = new RelationalOperator("greater", JGT){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() > ((ConstantExpression)right).value()) ? 1: 0);
 		}
+		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
+			if(left instanceof GeneralError || right instanceof GeneralError){
+				return false;
+			}
+			if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
+				err.semanticError(GCLError.INTEGER_REQUIRED, "Greater operator expected integers");
+				return false;
+			}
+			return true;
+		}
 	};
 	public static final RelationalOperator GREATER_OR_EQUAL = new RelationalOperator("greaterorequal", JGE){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() >= ((ConstantExpression)right).value()) ? 1: 0);
+		}
+		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
+			if(left instanceof GeneralError || right instanceof GeneralError){
+				return false;
+			}
+			if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
+				err.semanticError(GCLError.INTEGER_REQUIRED, "GreaterEqual operator expected integers");
+				return false;
+			}
+			return true;
 		}
 	};
 	public static final RelationalOperator LESS = new RelationalOperator("less", JLT){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() < ((ConstantExpression)right).value()) ? 1: 0);
 		}
+		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
+			if(left instanceof GeneralError || right instanceof GeneralError){
+				return false;
+			}
+			if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
+				err.semanticError(GCLError.INTEGER_REQUIRED, "Less operator expected integers");
+				return false;
+			}
+			return true;
+		}
 	};
 	public static final RelationalOperator LESS_OR_EQUAL = new RelationalOperator("lessorequal", JLE){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() <= ((ConstantExpression)right).value()) ? 1: 0);
+		}
+		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
+			if(left instanceof GeneralError || right instanceof GeneralError){
+				return false;
+			}
+			if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
+				err.semanticError(GCLError.INTEGER_REQUIRED, "LessEqual operator expected integers");
+				return false;
+			}
+			return true;
 		}
 	};
 
@@ -193,6 +267,18 @@ abstract class AddOperator extends Operator {
 			return new ConstantExpression(IntegerType.INTEGER_TYPE, left.value() - right.value());
 		}
 	};
+	
+	@Override
+	public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
+		if(left instanceof GeneralError || right instanceof GeneralError){
+			return false;
+		}
+		if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
+			err.semanticError(GCLError.INTEGER_REQUIRED, "AddOperator expected integers");
+			return false;
+		}
+		return true;
+	}
 
 	private AddOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -225,6 +311,18 @@ abstract class MultiplyOperator extends Operator {
 	// The multiplyExpression checks to see if MODULO is being passed, and
 	// executes modulusExpression instead (does not use MODULUS.samCode)
 	//
+	
+	@Override
+	public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
+		if(left instanceof GeneralError || right instanceof GeneralError){
+			return false;
+		}
+		if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
+			err.semanticError(GCLError.INTEGER_REQUIRED, "MultiplyOperator expected integers");
+			return false;
+		}
+		return true;
+	}
 
 	private MultiplyOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -247,6 +345,18 @@ abstract class BooleanOperator extends Operator {
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() == 1 || ((ConstantExpression)right).value() == 1) ? 1: 0);
 		}
 	};
+	
+	@Override
+	public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
+		if(left instanceof GeneralError || right instanceof GeneralError){
+			return false;
+		}
+		if(!(left.type().isCompatible(BooleanType.BOOLEAN_TYPE) && right.type().isCompatible(BooleanType.BOOLEAN_TYPE))){
+			err.semanticError(GCLError.BOOLEAN_REQUIRED, "BooleanOperator expected booleans");
+			return false;
+		}
+		return true;
+	}
 	
 	private BooleanOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -306,8 +416,17 @@ abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
 	 * @return "this" if it is a ConstantExpression and an ErrorConstantExpression otherwise.
 	 */
 	public ConstantExpression expectConstantExpression(final SemanticActions.GCLErrorStream err) {
-		err.semanticError(GCLError.EXPRESSION_REQUIRED);
+		err.semanticError(GCLError.CONSTANT_REQUIRED);
 		return new ErrorConstantExpression("$ ConstantExpression Required");
+	}
+	
+	/**
+	 * Soft Cast
+	 * @return "this" if it is a ConstantExpression and an ErrorConstantExpression otherwise.
+	 */
+	public VariableExpression expectVariableExpression(final SemanticActions.GCLErrorStream err) {
+		err.semanticError(GCLError.VARIABLE_REQUIRED);
+		return new ErrorVariableExpression("$ VariableExpression Required");
 	}
 
 	@Override
@@ -322,8 +441,7 @@ abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
 }
 
 /** Used to represent errors where expressions are expected. Immutable. */
-class ErrorExpression extends Expression implements GeneralError,
-		CodegenConstants {
+class ErrorExpression extends Expression implements GeneralError, CodegenConstants {
 	
 	private final String message;
 
@@ -331,6 +449,16 @@ class ErrorExpression extends Expression implements GeneralError,
 		super(ErrorType.NO_TYPE, GLOBAL_LEVEL);
 		this.message = message;
 		CompilerOptions.message(message);
+	}
+	
+	@Override
+	public ConstantExpression expectConstantExpression(GCLErrorStream err){
+		return new ErrorConstantExpression("$ Requires Constant Expression");
+	}
+	
+	@Override
+	public VariableExpression expectVariableExpression(GCLErrorStream err){
+		return new ErrorVariableExpression("$ Requires Variable Expression");
 	}
 
 	public String toString() {
@@ -430,6 +558,11 @@ class VariableExpression extends Expression implements CodegenConstants {
 		this(type, 0, register, direct);
 	}
 
+	@Override
+	public VariableExpression expectVariableExpression(GCLErrorStream err){
+		return this;
+	}
+	
 	public boolean needsToBePushed() { // used by parallel assignment
 		return semanticLevel() > CPU_LEVEL
 				|| (semanticLevel() == CPU_LEVEL && !isDirect);
@@ -464,15 +597,32 @@ class VariableExpression extends Expression implements CodegenConstants {
 	}
 }
 
+/** Used to represent errors where ConstantExpressions are expected. Immutable. */
+class ErrorVariableExpression extends VariableExpression implements GeneralError,
+		CodegenConstants {
+	
+	private final String message;
+
+	public ErrorVariableExpression(final String message) {
+		super(ErrorType.NO_TYPE, -1, DIRECT);
+		this.message = message;
+		CompilerOptions.message(message);
+	}
+
+	public String toString() {
+		return message;
+	}
+}
+
 /** Carries information needed by the assignment statement */
 class AssignRecord extends SemanticItem {
 	
-	private final ArrayList<Expression> lhs = new ArrayList<Expression>(3);
+	private final ArrayList<VariableExpression> lhs = new ArrayList<VariableExpression>(3);
 	private final ArrayList<Expression> rhs = new ArrayList<Expression>(3);
 	
-	public void left(Expression left) {
+	public void left(VariableExpression left) {
 		if (left == null) {
-			left = new ErrorExpression("$ Pushing bad lhs in assignment.");
+			left = new ErrorVariableExpression("$ Pushing bad lhs in assignment.");
 		}
 		lhs.add(left);
 	}
@@ -506,6 +656,10 @@ class AssignRecord extends SemanticItem {
 		}
 		else{
 			for(int variableIndex = 0; variableIndex < lhs.size(); variableIndex++){
+				// do not complain again for error expressions.
+				if(left(variableIndex) instanceof GeneralError || right(variableIndex) instanceof GeneralError){
+					continue;
+				}
 				if(!left(variableIndex).type().isCompatible(right(variableIndex).type())){
 					result = false;
 					err.semanticError(GCLError.TYPE_MISMATCH);
@@ -714,6 +868,11 @@ class ErrorType extends TypeDescriptor implements GeneralError {
 	private ErrorType() {
 		super(0);
 	}
+	
+	@Override
+	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err) {
+		return ErrorRangeType.NO_TYPE;
+	}
 
 	public String toString() {
 		return "Error type.";
@@ -816,6 +975,34 @@ class ErrorRangeType extends RangeType implements GeneralError, CodegenConstants
 	}
 	
 	public static final ErrorRangeType NO_TYPE = new ErrorRangeType();
+}
+
+/**Range type**/
+class ArrayType extends TypeDescriptor implements CodegenConstants {
+	
+	private final RangeType subscriptType;
+	private final TypeDescriptor componentType;
+	
+	public ArrayType(final RangeType subscriptType, final TypeDescriptor componentType){
+		super(0);// TODO determine size of a new arraytype and call super(size)
+		this.subscriptType = subscriptType;
+		this.componentType = componentType;
+	}
+
+	@Override
+	public TypeDescriptor baseType(){
+		return this;
+	}
+	
+	@Override
+	public String toString(){
+		return "arraytype: " + componentType.toString();
+	}
+	
+	@Override
+	public boolean isCompatible(final TypeDescriptor other) {
+		return true; // TODO define arraytype isCompatible
+	}
 }
 
 /**
@@ -1004,6 +1191,10 @@ abstract class GCLError {
 			"ERROR -> Illegal Range. ");
 	static final GCLError VALUE_OUT_OF_RANGE = new Value(12,
 			"ERROR -> Value out of acceptable range. ");
+	static final GCLError BOOLEAN_REQUIRED = new Value(13,
+			"ERROR -> Boolean type required. ");
+	static final GCLError VARIABLE_REQUIRED = new Value(14,
+			"ERROR -> Variable expression required. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(92,
@@ -1332,7 +1523,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return;
 		}
 		if (!expression.type().isCompatible(INTEGER_TYPE)) {
-			err.semanticError(GCLError.INTEGER_REQUIRED, "   while Reading"+expression.type().toString());
+			err.semanticError(GCLError.INTEGER_REQUIRED, "   while Reading" + expression.type().toString());
 			return;
 		}
 		Codegen.Location expressionLocation = codegen.buildOperands(expression);
@@ -1386,14 +1577,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -integer (in register)
 	 **************************************************************************/
 	Expression addExpression(final Expression left, final AddOperator op, final Expression right) {
-		if(left instanceof ErrorExpression){
-			return left;
-		}
-		if(right instanceof ErrorExpression){
-			return right;
-		}
-		if(!left.type().isCompatible(IntegerType.INTEGER_TYPE) || !right.type().isCompatible(IntegerType.INTEGER_TYPE)){
-			err.semanticError(GCLError.TYPE_MISMATCH, "addExpression expected integers");
+		if(!op.validOperands(left, right, err)){
 			return new ErrorExpression("Incompatible Types");
 		}
 		if(left instanceof ConstantExpression && right instanceof ConstantExpression) {
@@ -1414,6 +1598,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression negateExpression(final Expression expression) {
 		
+		if(expression instanceof GeneralError){
+			return new ErrorExpression("Incompatible Types");
+		}
+		if(!expression.type().isCompatible(INTEGER_TYPE)){
+			err.semanticError(GCLError.INTEGER_REQUIRED, "IntegerNegate expected integer");
+			return new ErrorExpression("Incompatible Types");
+		}
 		if(expression instanceof ConstantExpression) {
 			return new ConstantExpression(expression.type(), -((ConstantExpression)expression).value());
 		}
@@ -1432,6 +1623,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression negateBooleanExpression(final Expression booleanExpression){
 		
+		if(booleanExpression instanceof GeneralError){
+			return new ErrorExpression("Incompatible Types");
+		}
+		if(!booleanExpression.type().isCompatible(BOOLEAN_TYPE)){
+			err.semanticError(GCLError.BOOLEAN_REQUIRED, "BooleanNegate expected boolean");
+			return new ErrorExpression("Incompatible Types");
+		}
 		if(booleanExpression instanceof ConstantExpression) {
 			return new ConstantExpression(booleanExpression.type(), 1-((ConstantExpression)booleanExpression).value());
 		}
@@ -1452,8 +1650,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression multiplyExpression(final Expression left, final MultiplyOperator op, final Expression right) {
 		
-		if(!left.type().isCompatible(IntegerType.INTEGER_TYPE) || !right.type().isCompatible(IntegerType.INTEGER_TYPE)){
-			err.semanticError(GCLError.TYPE_MISMATCH, "multiplyExpression expected integers");
+		if(!op.validOperands(left, right, err)){
 			return new ErrorExpression("Incompatible Types");
 		}
 		if(left instanceof ConstantExpression && right instanceof ConstantExpression) {
@@ -1502,9 +1699,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression andExpression(final Expression left, final Expression right) {
 		
 		Operator op = BooleanOperator.AND;
-		if(!left.type().isCompatible(BooleanType.BOOLEAN_TYPE) || !right.type().isCompatible(BooleanType.BOOLEAN_TYPE)){
-			err.semanticError(GCLError.TYPE_MISMATCH);
-			return new ErrorExpression("Incompatible Types: Expected boolean.");
+		if(!op.validOperands(left, right, err)){
+			return new ErrorExpression("Incompatible Types");
 		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1526,9 +1722,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression orExpression(final Expression left, final Expression right) {
 		
 		Operator op = BooleanOperator.OR;
-		if(!left.type().isCompatible(BooleanType.BOOLEAN_TYPE) || !right.type().isCompatible(BooleanType.BOOLEAN_TYPE)){
-			err.semanticError(GCLError.TYPE_MISMATCH);
-			return new ErrorExpression("Incompatible Types: Expected boolean.");
+		if(!op.validOperands(left, right, err)){
+			return new ErrorExpression("Incompatible Types");
 		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1549,9 +1744,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -0(false) or 1(true) (in register)
 	 **************************************************************************/
 	Expression compareExpression(final Expression left, final RelationalOperator op, final Expression right) {
-		if(!left.type().isCompatible(right.type())){
-			err.semanticError(GCLError.TYPE_MISMATCH);
-			return new ErrorExpression("Incompatible Types: Expected boolean.");
+
+		if(!op.validOperands(left, right, err)){
+			return new ErrorExpression("Incompatible Types");
 		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1608,7 +1803,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	ForRecord startForall(Expression control, SemanticActions.GCLErrorStream err) {
 		RangeType bounds = control.type().expectRangeType(err);
-		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.getTemp(1), true);
+		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.getTemp(1), DIRECT);
 		codegen.gen2Address(LD, forCounter.offset(), "#" + bounds.lowerBound());
 		int forLabel = codegen.getLabel();
 		codegen.genLabel('F', forLabel);
@@ -1727,11 +1922,20 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		SymbolTable.Entry variable = scope.newEntry("variable", id, expr);
 		CompilerOptions.message("Entering: " + variable);
 	}
+
+	/***************************************************************************
+	 * Declare Array Type.
+	 **************************************************************************/
+	TypeDescriptor declareArrayType(final RangeType subscriptType, final TypeDescriptor componentType){
+		
+		return new ArrayType(subscriptType, componentType);
+	}
 	
 	/***************************************************************************
 	 * Declare Range Type.
 	 **************************************************************************/
-	TypeDescriptor declareRangeType (final SymbolTable scope, final Expression lowerBound, final Expression upperBound, final TypeDescriptor baseType){
+	TypeDescriptor declareRangeType(final Expression lowerBound, final Expression upperBound, final TypeDescriptor baseType){
+		
 		boolean valid = true;
 		
 		// complain on type mismatch

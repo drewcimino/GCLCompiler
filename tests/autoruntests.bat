@@ -45,14 +45,14 @@ java -cp . gcl.GCLCompiler ..\tests\test9_1 ..\tests\results\test9_1list.txt
 java -cp . gcl.GCLCompiler ..\tests\test9_2 ..\tests\results\test9_2list.txt 
 ..\sam3-pc.exe
 ..\macc3-pc.exe  >..\tests\results\test9_2.result
-::java -cp . gcl.GCLCompiler ..\tests\test9_3 ..\tests\results\test9_3list.txt 
-::..\sam3-pc.exe
-::java -cp . gcl.GCLCompiler ..\tests\test10 ..\tests\results\test10list.txt 
-::java -cp . gcl.GCLCompiler ..\tests\test10_1 ..\tests\results\test10_1list.txt 
-::..\sam3-pc.exe
-::..\macc3-pc.exe  >..\tests\results\test1-_1.result
-::java -cp . gcl.GCLCompiler ..\tests\test10_2 ..\tests\results\test10_2list.txt 
-::..\sam3-pc.exe
+java -cp . gcl.GCLCompiler ..\tests\test9_3 ..\tests\results\test9_3list.txt 
+..\sam3-pc.exe
+java -cp . gcl.GCLCompiler ..\tests\test10 ..\tests\results\test10list.txt 
+java -cp . gcl.GCLCompiler ..\tests\test10_1 ..\tests\results\test10_1list.txt 
+..\sam3-pc.exe
+..\macc3-pc.exe  >..\tests\results\test10_1.result
+java -cp . gcl.GCLCompiler ..\tests\test10_2 ..\tests\results\test10_2list.txt 
+..\sam3-pc.exe
 ::java -cp . gcl.GCLCompiler ..\tests\test11 ..\tests\results\test11list.txt 
 ::..\sam3-pc.exe
 ::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11.result
