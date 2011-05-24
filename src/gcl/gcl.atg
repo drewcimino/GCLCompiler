@@ -100,9 +100,10 @@ variableDefinition<SymbolTable scope, ParameterKind kindOfParam>
 /*----------------------------------------------------------*/
 arrayType<^TypeDescriptor result, TypeDescriptor componentType, SymbolTable scope>
 =
-	(. SemanticItem subscriptType; .)
-	"array" "[" qualifiedIdentifier<^subscriptType, scope> "]"
-	(. result = semantic.declareArrayType(subscriptType.expectTypeDescriptor(err).expectRangeType(err), componentType); .).
+	(. SemanticItem subscriptType; java.util.Stack<RangeType> subscripts = new java.util.Stack<RangeType>(); .)
+	"array" "[" qualifiedIdentifier<^subscriptType, scope> (. subscripts.push(subscriptType.expectTypeDescriptor(err).expectRangeType(err)); .) "]"
+		  { "[" qualifiedIdentifier<^subscriptType, scope> (. subscripts.push(subscriptType.expectTypeDescriptor(err).expectRangeType(err)); .) "]" }
+	(. result = semantic.declareArrayType(subscripts, componentType); .).
 /*----------------------------------------------------------*/
 rangeType<^TypeDescriptor result, TypeDescriptor baseType, SymbolTable scope>
 =
@@ -296,9 +297,15 @@ identifier
 	.).
 /*----------------------------------------------------------*/
 variableAccessEtc<^Expression result, SymbolTable scope>  
-      (. SemanticItem workValue; .)   
+    (. SemanticItem workValue; .)   
 =
-qualifiedIdentifier<^workValue, scope> (. result = workValue.expectExpression(err); .) .
+	qualifiedIdentifier<^workValue, scope> subsAndCompons<^result, workValue, scope>.
+/*----------------------------------------------------------*/
+subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
+=
+	(. result = identifier.expectExpression(err); Expression subscript; SemanticItem component; .)
+	{  "[" expression<^subscript, scope> "]" (. result = semantic.subscript(result, subscript); .)
+	 | "@" qualifiedIdentifier<^component, scope> (. /*result = semantic.tupleComponent(result, component.expectTypeDescriptor(err).expectTupleType(err));*/ .) }.
 /*----------------------------------------------------------*/
 booleanConstant
 =

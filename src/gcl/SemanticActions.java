@@ -970,7 +970,7 @@ class ErrorRangeType extends RangeType implements GeneralError, CodegenConstants
 	public static final ErrorRangeType NO_TYPE = new ErrorRangeType();
 }
 
-/**Range type**/
+/**Array type**/
 class ArrayType extends TypeDescriptor implements CodegenConstants {
 	
 	private final RangeType subscriptType;
@@ -981,6 +981,14 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 		this.subscriptType = subscriptType;
 		this.componentType = componentType;
 	}
+	
+//	public RangeType subscriptType(){
+//		return subscriptType;
+//	}
+//	
+//	public TypeDescriptor componentType(){
+//		return componentType;
+//	}
 
 	@Override
 	public TypeDescriptor baseType(){
@@ -1188,6 +1196,8 @@ abstract class GCLError {
 			"ERROR -> Boolean type required. ");
 	static final GCLError VARIABLE_REQUIRED = new Value(14,
 			"ERROR -> Variable expression required. ");
+	static final GCLError ARRAY_OR_TUPLE_REQUIRED = new Value(15,
+			"ERROR -> Array or Tuple expression required. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(92,
@@ -1575,7 +1585,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression addExpression(final Expression left, final AddOperator op, final Expression right) {
 		if(!op.validOperands(left, right, err)){
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if(left instanceof ConstantExpression && right instanceof ConstantExpression) {
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1596,11 +1606,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression negateExpression(final Expression expression) {
 		
 		if(expression instanceof GeneralError){
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if(!expression.type().isCompatible(INTEGER_TYPE)){
 			err.semanticError(GCLError.INTEGER_REQUIRED, "IntegerNegate expected integer");
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if(expression instanceof ConstantExpression) {
 			return new ConstantExpression(expression.type(), -((ConstantExpression)expression).value());
@@ -1621,11 +1631,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression negateBooleanExpression(final Expression booleanExpression){
 		
 		if(booleanExpression instanceof GeneralError){
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if(!booleanExpression.type().isCompatible(BOOLEAN_TYPE)){
 			err.semanticError(GCLError.BOOLEAN_REQUIRED, "BooleanNegate expected boolean");
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if(booleanExpression instanceof ConstantExpression) {
 			return new ConstantExpression(booleanExpression.type(), 1-((ConstantExpression)booleanExpression).value());
@@ -1648,7 +1658,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression multiplyExpression(final Expression left, final MultiplyOperator op, final Expression right) {
 		
 		if(!op.validOperands(left, right, err)){
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if(left instanceof ConstantExpression && right instanceof ConstantExpression) {
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1697,7 +1707,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		
 		Operator op = BooleanOperator.AND;
 		if(!op.validOperands(left, right, err)){
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1720,7 +1730,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		
 		Operator op = BooleanOperator.OR;
 		if(!op.validOperands(left, right, err)){
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1743,7 +1753,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	Expression compareExpression(final Expression left, final RelationalOperator op, final Expression right) {
 
 		if(!op.validOperands(left, right, err)){
-			return new ErrorExpression("Incompatible Types");
+			return new ErrorExpression("$ Incompatible Types");
 		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
 			op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
@@ -1923,9 +1933,39 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	/***************************************************************************
 	 * Declare Array Type.
 	 **************************************************************************/
-	TypeDescriptor declareArrayType(final RangeType subscriptType, final TypeDescriptor componentType){
+	TypeDescriptor declareArrayType(java.util.Stack<RangeType> subscripts, final TypeDescriptor componentType){
 		
-		return new ArrayType(subscriptType, componentType);
+		ArrayType result = new ArrayType(subscripts.pop(), componentType);
+		while(!subscripts.empty()){
+			result = new ArrayType(subscripts.pop(), result);// recursively chain the ArrayTypes
+		}
+		return result;
+	}
+	
+	/***************************************************************************
+	 * Subscript.
+	 * @param base an expression whose members can be accessed by subscript.
+	 * @param subscript indicator of the member within base.
+	 * @return an expression indicated by subscript from base.
+	 **************************************************************************/
+	Expression subscript(Expression base, Expression subscript){// base type is either Array or Tuple and must be handled differently in either case.
+		
+		//return new ErrorExpression("$ Incompatible Types.");// uncomment this line to see a test of bogus values.
+		
+		if(base instanceof GeneralError || subscript instanceof GeneralError){
+			return new ErrorExpression("$ Incompatible Types.");
+		}
+		//TODO return base[subscript]
+		if(base.type() instanceof ArrayType){
+			//RangeType subscriptType base.type().expectArrayType(err).subscriptType();
+			return null;
+		}
+		//TODO return tuple[member]
+		if(base.type() instanceof TupleType){
+			return null;
+		}
+		err.semanticError(GCLError.ARRAY_OR_TUPLE_REQUIRED);
+		return new ErrorExpression("$ Array or Tuple required.");
 	}
 	
 	/***************************************************************************
