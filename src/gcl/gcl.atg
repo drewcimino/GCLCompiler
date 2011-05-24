@@ -304,7 +304,7 @@ variableAccessEtc<^Expression result, SymbolTable scope>
 subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
 =
 	(. result = identifier.expectExpression(err); Expression subscript; SemanticItem component; .)
-	{  "[" expression<^subscript, scope> "]" (. result = semantic.subscript(result, subscript); .)
+	{  "[" expression<^subscript, scope> "]" (. result = semantic.subscript(result.expectVariableExpression(err), subscript); .)
 	 | "@" qualifiedIdentifier<^component, scope> (. /*result = semantic.tupleComponent(result, component.expectTypeDescriptor(err).expectTupleType(err));*/ .) }.
 /*----------------------------------------------------------*/
 booleanConstant

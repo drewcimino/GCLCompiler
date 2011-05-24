@@ -667,10 +667,7 @@ class AssignRecord extends SemanticItem {
 				else if (left(variableIndex).type() instanceof RangeType && right(variableIndex) instanceof ConstantExpression){
 					RangeType leftRangeType = left(variableIndex).type().expectRangeType(err);
 					ConstantExpression rightConstant = right(variableIndex).expectConstantExpression(err);
-					if(rightConstant.value() < leftRangeType.lowerBound() || rightConstant.value() > leftRangeType.upperBound()){
-						result = false;
-						err.semanticError(GCLError.VALUE_OUT_OF_RANGE);
-					}
+					result = leftRangeType.constantFolding(rightConstant, err);
 				}
 			}
 		}
@@ -935,6 +932,20 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 		return location;
 	}
 	
+	/**
+	 * @param subscript index value being accessed.
+	 * @param err error stream on which to complain.
+	 * @return true if subscript is valid; false otherwise.
+	 */
+	public boolean constantFolding(ConstantExpression subscript, GCLErrorStream err){
+		
+		if(subscript.value() < lowerBound || subscript.value() > upperBound){
+			err.semanticError(GCLError.VALUE_OUT_OF_RANGE);
+			return false;
+		}
+		return true;
+	}
+	
 	@Override
 	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err){
 		return this;
@@ -982,13 +993,13 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 		this.componentType = componentType;
 	}
 	
-//	public RangeType subscriptType(){
-//		return subscriptType;
-//	}
-//	
-//	public TypeDescriptor componentType(){
-//		return componentType;
-//	}
+	public RangeType subscriptType(){
+		return subscriptType;
+	}
+	
+	public TypeDescriptor componentType(){
+		return componentType;
+	}
 
 	@Override
 	public TypeDescriptor baseType(){
@@ -1196,8 +1207,8 @@ abstract class GCLError {
 			"ERROR -> Boolean type required. ");
 	static final GCLError VARIABLE_REQUIRED = new Value(14,
 			"ERROR -> Variable expression required. ");
-	static final GCLError ARRAY_OR_TUPLE_REQUIRED = new Value(15,
-			"ERROR -> Array or Tuple expression required. ");
+	static final GCLError ARRAY_REQUIRED = new Value(15,
+			"ERROR -> Array expression required. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(92,
@@ -1944,28 +1955,50 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	
 	/***************************************************************************
 	 * Subscript.
-	 * @param base an expression whose members can be accessed by subscript.
-	 * @param subscript indicator of the member within base.
-	 * @return an expression indicated by subscript from base.
+	 * @param array an expression of type array.
+	 * @param subscript index within array.
+	 * @return an expression indicated by subscript from array.
 	 **************************************************************************/
-	Expression subscript(Expression base, Expression subscript){// base type is either Array or Tuple and must be handled differently in either case.
+	Expression subscript(VariableExpression array, Expression subscript){
 		
-		//return new ErrorExpression("$ Incompatible Types.");// uncomment this line to see a test of bogus values.
-		
-		if(base instanceof GeneralError || subscript instanceof GeneralError){
+		if(array instanceof GeneralError || subscript instanceof GeneralError){
 			return new ErrorExpression("$ Incompatible Types.");
 		}
-		//TODO return base[subscript]
-		if(base.type() instanceof ArrayType){
-			//RangeType subscriptType base.type().expectArrayType(err).subscriptType();
-			return null;
+		if(array.type() instanceof ArrayType){
+			ArrayType arrayType = (ArrayType)array.type();
+			
+			if(subscript instanceof ConstantExpression){// constant subscript
+				ConstantExpression constantSubscript = subscript.expectConstantExpression(err);
+				// bounds check
+				if(!arrayType.subscriptType().constantFolding(constantSubscript, err)){
+					return new ErrorExpression("$ Subscript out of range.");
+				}
+				// variable access
+				int arrayRegister = codegen.loadAddress(array);
+				int inset = (constantSubscript.value() - arrayType.subscriptType().lowerBound()) * arrayType.subscriptType().size();
+				if(inset != 0){
+					codegen.gen2Address(IA, arrayRegister, String.valueOf(inset));
+				}
+				return new VariableExpression(arrayType.componentType(), UNUSED, arrayRegister, INDIRECT);
+			}
+			else if(subscript instanceof VariableExpression){// variable subscript
+				VariableExpression variableSubscript = subscript.expectVariableExpression(err);
+				int subscriptRegister = codegen.loadRegister(variableSubscript);
+				// bounds check
+				codegen.gen2Address(TRNG, subscriptRegister, arrayType.subscriptType().location());
+				// variable access
+				codegen.gen2Address(IS, subscriptRegister, arrayType.subscriptType().location());
+				codegen.gen2Address(IM, subscriptRegister, "#" + arrayType.subscriptType().size());
+				int arrayRegister = codegen.loadAddress(array);
+				codegen.gen2Address(IA, arrayRegister,DMEM, subscriptRegister, UNUSED);
+				codegen.freeTemp(DMEM, subscriptRegister);
+				return new VariableExpression(arrayType.componentType(), UNUSED, arrayRegister, INDIRECT);
+			}
+			else{// TODO is there any other case besides constant or variable subscripts? note: error subscripts were handled up top.
+			}
 		}
-		//TODO return tuple[member]
-		if(base.type() instanceof TupleType){
-			return null;
-		}
-		err.semanticError(GCLError.ARRAY_OR_TUPLE_REQUIRED);
-		return new ErrorExpression("$ Array or Tuple required.");
+		err.semanticError(GCLError.ARRAY_REQUIRED);
+		return new ErrorExpression("$ Array required.");
 	}
 	
 	/***************************************************************************

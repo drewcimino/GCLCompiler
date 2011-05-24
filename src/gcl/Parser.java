@@ -664,7 +664,7 @@ public class Parser {
 				Get();
 				subscript = expression(scope);
 				Expect(15);
-				result = semantic.subscript(result, subscript); 
+				result = semantic.subscript(result.expectVariableExpression(err), subscript); 
 			} else {
 				Get();
 				component = qualifiedIdentifier(scope);
