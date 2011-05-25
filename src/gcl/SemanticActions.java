@@ -1,5 +1,7 @@
 package gcl;
-
+//TODO try using stock codegen for the sake of testing.
+//TODO test5 produces pushes and pops 95, 1 ???
+//TODO test8 doesn't recognize tuple type compatibility.
 import gcl.Codegen.ConstantLike;
 import gcl.Codegen.Location;
 import gcl.SemanticActions.GCLErrorStream;
@@ -154,7 +156,7 @@ abstract class Operator extends SemanticItem implements Mnemonic {
  * Relational operators such as = and # Typesafe enumeration pattern as well as
  * immutable
  */
-abstract class RelationalOperator extends Operator {// TODO Expand Relational Operators to accept booleans as operands. (i . i) || (b . b)
+abstract class RelationalOperator extends Operator {
 	
 	public static final RelationalOperator EQUAL = new RelationalOperator("equal", JEQ){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
@@ -194,8 +196,8 @@ abstract class RelationalOperator extends Operator {// TODO Expand Relational Op
 			if(left instanceof GeneralError || right instanceof GeneralError){
 				return false;
 			}
-			if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
-				err.semanticError(GCLError.INTEGER_REQUIRED, "Greater operator expected integers");
+			if(!operandsIntIntOrBoolBool(left, right)){
+				err.semanticError(GCLError.TYPE_MISMATCH, "Greater operator expected same type");
 				return false;
 			}
 			return true;
@@ -209,8 +211,8 @@ abstract class RelationalOperator extends Operator {// TODO Expand Relational Op
 			if(left instanceof GeneralError || right instanceof GeneralError){
 				return false;
 			}
-			if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
-				err.semanticError(GCLError.INTEGER_REQUIRED, "GreaterEqual operator expected integers");
+			if(!operandsIntIntOrBoolBool(left, right)){
+				err.semanticError(GCLError.TYPE_MISMATCH, "GreaterEqual operator expected same type");
 				return false;
 			}
 			return true;
@@ -224,8 +226,8 @@ abstract class RelationalOperator extends Operator {// TODO Expand Relational Op
 			if(left instanceof GeneralError || right instanceof GeneralError){
 				return false;
 			}
-			if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
-				err.semanticError(GCLError.INTEGER_REQUIRED, "Less operator expected integers");
+			if(!operandsIntIntOrBoolBool(left, right)){
+				err.semanticError(GCLError.TYPE_MISMATCH, "Less operator expected same type");
 				return false;
 			}
 			return true;
@@ -239,13 +241,18 @@ abstract class RelationalOperator extends Operator {// TODO Expand Relational Op
 			if(left instanceof GeneralError || right instanceof GeneralError){
 				return false;
 			}
-			if(!(left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE))){
-				err.semanticError(GCLError.INTEGER_REQUIRED, "LessEqual operator expected integers");
+			if(!operandsIntIntOrBoolBool(left, right)){
+				err.semanticError(GCLError.TYPE_MISMATCH, "LessEqual operator expected same type");
 				return false;
 			}
 			return true;
 		}
 	};
+	
+	private static boolean operandsIntIntOrBoolBool(Expression left, Expression right){
+		return (left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE)) ||
+			   (left.type().isCompatible(BooleanType.BOOLEAN_TYPE) && right.type().isCompatible(BooleanType.BOOLEAN_TYPE));
+	}
 
 	private RelationalOperator(final String op, final SamOp opcode) {
 		super(op, opcode);
@@ -1013,7 +1020,7 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 	
 	@Override
 	public boolean isCompatible(final TypeDescriptor other) {
-		return true; // TODO define arraytype isCompatible
+		return componentType.isCompatible(other);
 	}
 }
 
@@ -1787,6 +1794,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return GCRecord entry with two label slots for this statement.
 	 **************************************************************************/
 	GCRecord startIf() {
+		
 		return new GCRecord(codegen.getLabel(), 0);
 	}
 
@@ -1796,6 +1804,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param entry GCRecord holding the labels for this statement.
 	 **************************************************************************/
 	void endIf(final GCRecord entry) {
+		
 		codegen.gen0Address(HALT);
 		codegen.genLabel('J', entry.outLabel());
 	}
@@ -1807,6 +1816,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return GCRecord entry with two label slots for this statement.
 	 **************************************************************************/
 	GCRecord startDo() {
+		
 		int startLabel = codegen.getLabel();
 		codegen.genLabel('J', startLabel);
 		return new GCRecord(startLabel, 0);
@@ -1820,6 +1830,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return ForRecord entry with a counter and a label for this statement.
 	 **************************************************************************/
 	ForRecord startForall(Expression control, SemanticActions.GCLErrorStream err) {
+		
 		RangeType bounds = control.type().expectRangeType(err);
 		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.getTemp(1), DIRECT);
 		codegen.gen2Address(LD, forCounter.offset(), "#" + bounds.lowerBound());
@@ -1838,6 +1849,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param entry ForRecord holding the counter and label for this statement.
 	 **************************************************************************/
 	void endForall(final ForRecord entry, Expression control, SemanticActions.GCLErrorStream err) {
+		
 		RangeType bounds = control.type().expectRangeType(err);
 		codegen.gen2Address(INC, entry.counter().offset(), "1");
 		codegen.gen2Address(IC, entry.counter().offset(), "#" + bounds.upperBound());
@@ -1852,6 +1864,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param entry GCRecord with the associated labels. This is updated
 	 **************************************************************************/
 	void ifTest(final Expression expression, final GCRecord entry) {
+		
 		int resultreg = codegen.loadRegister(expression);
 		int nextElse = codegen.getLabel();
 		entry.nextLabel(nextElse);
@@ -1866,6 +1879,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param entry GCRecord with the labels
 	 **************************************************************************/
 	void elseIf(final GCRecord entry) {
+		
 		codegen.genJumpLabel(JMP, 'J', entry.outLabel());
 		codegen.genLabel('J', entry.nextLabel());
 	}
@@ -1878,6 +1892,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return an expression representing the tuple value as a whole.
 	 **************************************************************************/
 	Expression buildTuple(final ExpressionList tupleFields) {
+		
 		Iterator<Expression> elements = tupleFields.elements();
 		TypeList types = new TypeList();
 		int address = codegen.variableBlockSize(); // beginning of the tuple
@@ -1907,10 +1922,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expr) {
 		
 		complainIfDefinedHere(scope, id);
-		
-		//codegen.reserveGlobalAddress(INTEGER_TYPE.size());
-		//codegen.buildOperands(expr);
-		
+		//codegen.buildOperands(expr);// TODO is this line needed?
 		SymbolTable.Entry constant = scope.newEntry("constant", id, expr);
 		CompilerOptions.message("Entering: " + constant);
 	}
@@ -1925,14 +1937,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param ID identifier to be defined
 	 * @param procParam the kind of procedure param it is (if any).
 	 **************************************************************************/
-	void declareVariable(final SymbolTable scope, final TypeDescriptor type, final Identifier id,
-			final ParameterKind procParam) {
+	void declareVariable(final SymbolTable scope, final TypeDescriptor type, final Identifier id, final ParameterKind procParam) {
+		
 		complainIfDefinedHere(scope, id);
 		VariableExpression expr = null;
 		if (currentLevel().isGlobal()) { // Global variable
 			int addressOffset = codegen.reserveGlobalAddress(type.size());
-			expr = new VariableExpression(type, currentLevel().value(),
-					addressOffset, DIRECT);
+			expr = new VariableExpression(type, currentLevel().value(), addressOffset, DIRECT);
 		} else { // may be param or local in a proc
 			// more later -- for now throw an exception
 			throw new IllegalStateException("Missing code in declareVariable.");
@@ -1977,9 +1988,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 				int arrayRegister = codegen.loadAddress(array);
 				int inset = (constantSubscript.value() - arrayType.subscriptType().lowerBound()) * arrayType.subscriptType().size();
 				if(inset != 0){
-					codegen.gen2Address(IA, arrayRegister, String.valueOf(inset));
+					codegen.gen2Address(IA, arrayRegister, "#" + inset);
 				}
-				return new VariableExpression(arrayType.componentType(), UNUSED, arrayRegister, INDIRECT);
+				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
 			}
 			else if(subscript instanceof VariableExpression){// variable subscript
 				VariableExpression variableSubscript = subscript.expectVariableExpression(err);
@@ -1992,7 +2003,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 				int arrayRegister = codegen.loadAddress(array);
 				codegen.gen2Address(IA, arrayRegister,DMEM, subscriptRegister, UNUSED);
 				codegen.freeTemp(DMEM, subscriptRegister);
-				return new VariableExpression(arrayType.componentType(), UNUSED, arrayRegister, INDIRECT);
+				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
 			}
 			else{// TODO is there any other case besides constant or variable subscripts? note: error subscripts were handled up top.
 			}
@@ -2059,6 +2070,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param ID identifier to be defined
 	 **************************************************************************/
 	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id){
+		
 		complainIfDefinedHere(scope, id);
 		scope.newEntry("type", id, type);
 		CompilerOptions.message("Entering: " + type);
@@ -2068,6 +2080,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * Complain if invalid spelling.
 	 **************************************************************************/
 	void checkIdentifierSpelling(final String identifier){
+		
 		if(!Identifier.isValid(identifier)){
 	   		err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
 	    }
@@ -2077,6 +2090,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * Set up the registers and other run time initializations.
 	 **************************************************************************/
 	void startCode() {
+		
 		codegen.genCodePreamble();
 	}
 
@@ -2085,6 +2099,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * variables.
 	 **************************************************************************/
 	void finishCode() {
+		
 		codegen.genCodePostamble();
 	}
 
@@ -2095,6 +2110,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return the current semantic level object.
 	 */
 	SemanticLevel currentLevel() {
+		
 		return currentLevel;
 	}
 
