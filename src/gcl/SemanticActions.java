@@ -1,5 +1,5 @@
 package gcl;
-//TODO try using stock codegen for the sake of testing.
+//TODO try using stock codegen for the sake of testing. It'll help us understand issues better.
 //TODO test5 produces pushes and pops 95, 1 ???
 //TODO test8 doesn't recognize tuple type compatibility.
 import gcl.Codegen.ConstantLike;
@@ -1922,7 +1922,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expr) {
 		
 		complainIfDefinedHere(scope, id);
-		//codegen.buildOperands(expr);// TODO is this line needed?
+		codegen.buildOperands(expr);
 		SymbolTable.Entry constant = scope.newEntry("constant", id, expr);
 		CompilerOptions.message("Entering: " + constant);
 	}
@@ -2005,7 +2005,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 				codegen.freeTemp(DMEM, subscriptRegister);
 				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
 			}
-			else{// TODO is there any other case besides constant or variable subscripts? note: error subscripts were handled up top.
+			else{// TODO is there any other case besides constant or variable subscripts? note: error subscripts were handled up top. Discuss with Drew before removing this line and then variable check can turn into an else. (or stay for clarity)
 			}
 		}
 		err.semanticError(GCLError.ARRAY_REQUIRED);
