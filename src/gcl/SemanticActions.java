@@ -2,6 +2,7 @@ package gcl;
 //TODO test0 and test8 doesn't recognize tuple type compatibility.
 //TODO Require VariableExpression in test 10 (3rd error)
 //TODO Deal with the runtime errors in 10_1 (there should only be 1 in the result file)
+//TODO Treat subscripts all together rather than loading each dimension.
 import gcl.Codegen.ConstantLike;
 import gcl.Codegen.Location;
 import gcl.SemanticActions.GCLErrorStream;
@@ -1995,11 +1996,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 					return new ErrorExpression("$ Subscript out of range.");
 				}
 				// variable access
-				int arrayRegister = codegen.loadAddress(array);
 				int inset = (constantSubscript.value() - arrayType.subscriptType().lowerBound()) * arrayType.subscriptType().size();
-				if(inset != 0){
-					codegen.gen2Address(IA, arrayRegister, "#" + inset);
-				}
+				Location indexLocation = codegen.addInset(codegen.buildOperands(array), inset);
+				int arrayRegister = codegen.getTemp(1);
+				codegen.gen2Address(LD, arrayRegister, indexLocation);
 				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
 			}
 			else{ // variable subscript - left the else for clarity.

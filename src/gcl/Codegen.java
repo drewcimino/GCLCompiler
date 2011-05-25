@@ -152,6 +152,13 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		}
 		return new Location(mode, base, displacement);
 	}
+	
+	/**
+	 * @return A new location with an inset added to the displacement of the location of an array variable.
+	 */
+	public Location addInset(Location arrayLocation, int inset){
+		return new Location(arrayLocation.mode, arrayLocation.base, arrayLocation.displacement + inset);
+	}
 
 	/**
 	 * Load a value into a register (or say which register if already loaded).
