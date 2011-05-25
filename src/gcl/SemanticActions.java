@@ -920,7 +920,7 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 	private final TypeDescriptor baseType;
 	
 	public RangeType(final TypeDescriptor baseType, final int lowerBound, final int upperBound, final Location location){
-		super(INT_SIZE*2);
+		super(INT_SIZE);
 		this.lowerBound = lowerBound;
 		this.upperBound = upperBound;
 		this.location = location;
@@ -1992,20 +1992,18 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 				}
 				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
 			}
-			else if(subscript instanceof VariableExpression){// variable subscript
+			else{ // variable subscript - left the else for clarity.
 				VariableExpression variableSubscript = subscript.expectVariableExpression(err);
 				int subscriptRegister = codegen.loadRegister(variableSubscript);
 				// bounds check
 				codegen.gen2Address(TRNG, subscriptRegister, arrayType.subscriptType().location());
 				// variable access
 				codegen.gen2Address(IS, subscriptRegister, arrayType.subscriptType().location());
-				codegen.gen2Address(IM, subscriptRegister, "#" + arrayType.subscriptType().size());
+				codegen.gen2Address(IM, subscriptRegister, "#" + arrayType.componentType().size());
 				int arrayRegister = codegen.loadAddress(array);
 				codegen.gen2Address(IA, arrayRegister,DMEM, subscriptRegister, UNUSED);
 				codegen.freeTemp(DMEM, subscriptRegister);
 				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
-			}
-			else{// TODO is there any other case besides constant or variable subscripts? note: error subscripts were handled up top. Discuss with Drew before removing this line and then variable check can turn into an else. (or stay for clarity)
 			}
 		}
 		err.semanticError(GCLError.ARRAY_REQUIRED);
