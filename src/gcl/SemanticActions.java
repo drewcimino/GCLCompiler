@@ -1,7 +1,7 @@
 package gcl;
-//TODO try using stock codegen for the sake of testing. It'll help us understand issues better.
-//TODO test5 produces pushes and pops 95, 1 ???
-//TODO test8 doesn't recognize tuple type compatibility.
+//TODO test0 and test8 doesn't recognize tuple type compatibility.
+//TODO Require VariableExpression in test 10 (3rd error)
+//TODO Deal with the runtime errors in 10_1 (there should only be 1 in the result file)
 import gcl.Codegen.ConstantLike;
 import gcl.Codegen.Location;
 import gcl.SemanticActions.GCLErrorStream;
@@ -429,7 +429,7 @@ abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
 	
 	/**
 	 * Soft Cast
-	 * @return "this" if it is a ConstantExpression and an ErrorConstantExpression otherwise.
+	 * @return "this" if it is a VariableExpression and an ErrorVariableExpression otherwise.
 	 */
 	public VariableExpression expectVariableExpression(final SemanticActions.GCLErrorStream err) {
 		err.semanticError(GCLError.VARIABLE_REQUIRED);
@@ -641,7 +641,7 @@ class AssignRecord extends SemanticItem {
 		rhs.add(right);
 	}
 
-	public Expression left(final int index) {
+	public VariableExpression left(final int index) {
 		return lhs.get(index);
 	}
 
@@ -775,12 +775,18 @@ class GCRecord extends SemanticItem { // For guarded command statements if and d
 
 /** Used to carry information for for loops */
 class ForRecord extends SemanticItem {
+	private RangeType bounds;
 	private int forLabel;
 	private VariableExpression counter;
 	
-	public ForRecord(int forLabel, VariableExpression counter){
+	public ForRecord(RangeType bounds, int forLabel, VariableExpression counter){
+		this.bounds = bounds;
 		this.forLabel = forLabel;
 		this.counter = counter;
+	}
+	
+	public RangeType bounds(){
+		return bounds;
 	}
 	
 	public int forLabel(){
@@ -816,7 +822,7 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 	 * @return "this" if it is a range type and a NO_TYPE otherwise.
 	 */
 	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err) {
-		err.semanticError(GCLError.TYPE_REQUIRED);
+		err.semanticError(GCLError.RANGE_REQUIRED);
 		return ErrorRangeType.NO_TYPE;
 	}
 
@@ -974,7 +980,7 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 	}
 }
 
-/** Used to represent errors where ConstantExpressions are expected. Immutable. */
+/** Used to represent errors where ErrorRangeType are expected. Immutable. */
 class ErrorRangeType extends RangeType implements GeneralError, CodegenConstants {
 
 	public ErrorRangeType() {
@@ -1216,6 +1222,8 @@ abstract class GCLError {
 			"ERROR -> Variable expression required. ");
 	static final GCLError ARRAY_REQUIRED = new Value(15,
 			"ERROR -> Array expression required. ");
+	static final GCLError RANGE_REQUIRED = new Value(16,
+			"ERROR -> Range type required. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(92,
@@ -1511,8 +1519,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return;
 		}
 		int entries = expressions.size(); // number of entries to process
-		if (CompilerOptions.optimize && entries == 1) { // whatever
-		} // optimizations possible
+		if (CompilerOptions.optimize && entries == 1) {
+			simpleMove(expressions.right(0), expressions.left(0));
+			return; // Optimized to skip push/pop for one item
+		}
 		// part 2. pushing except consts, temps, and stackvariables
 		for (i = 0; i < entries; ++i) {
 			Expression rightExpression = expressions.right(i);
@@ -1553,6 +1563,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 		Codegen.Location expressionLocation = codegen.buildOperands(expression);
 		codegen.gen1Address(RDI, expressionLocation);
+		codegen.freeTemp(expressionLocation);
 	}
 
 	/***************************************************************************
@@ -1837,7 +1848,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		int forLabel = codegen.getLabel();
 		codegen.genLabel('F', forLabel);
 		codegen.gen2Address(STO, forCounter.offset(), codegen.buildOperands(control));
-		return new ForRecord(forLabel, forCounter);
+		return new ForRecord(bounds, forLabel, forCounter);
 	}
 	
 	/***************************************************************************
@@ -1848,11 +1859,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * 
 	 * @param entry ForRecord holding the counter and label for this statement.
 	 **************************************************************************/
-	void endForall(final ForRecord entry, Expression control, SemanticActions.GCLErrorStream err) {
+	void endForall(final ForRecord entry, SemanticActions.GCLErrorStream err) {
 		
-		RangeType bounds = control.type().expectRangeType(err);
 		codegen.gen2Address(INC, entry.counter().offset(), "1");
-		codegen.gen2Address(IC, entry.counter().offset(), "#" + bounds.upperBound());
+		codegen.gen2Address(IC, entry.counter().offset(), "#" + entry.bounds().upperBound());
 		codegen.genJumpLabel(JLE, 'F', entry.forLabel());
 		codegen.freeTemp(codegen.buildOperands(entry.counter()));
 	}
@@ -2001,8 +2011,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 				codegen.gen2Address(IS, subscriptRegister, arrayType.subscriptType().location());
 				codegen.gen2Address(IM, subscriptRegister, "#" + arrayType.componentType().size());
 				int arrayRegister = codegen.loadAddress(array);
-				codegen.gen2Address(IA, arrayRegister,DMEM, subscriptRegister, UNUSED);
-				codegen.freeTemp(DMEM, subscriptRegister);
+				codegen.gen2Address(IA, arrayRegister,DREG, subscriptRegister, UNUSED);
+				codegen.freeTemp(DREG, subscriptRegister);
 				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
 			}
 		}

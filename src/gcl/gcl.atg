@@ -180,7 +180,7 @@ forStatement<SymbolTable scope>  (. ForRecord forRecord; Expression control; .)
 =
 	"forall" variableAccessEtc<^control, scope> (. forRecord = semantic.startForall(control, err); .) "->"
 	statementPart<scope> 
-	"llarof" (. semantic.endForall(forRecord, control, err); .).
+	"llarof" (. semantic.endForall(forRecord, err); .).
 /*----------------------------------------------------------*/
 ifStatement<SymbolTable scope>  (. GCRecord ifRecord; .)
 =

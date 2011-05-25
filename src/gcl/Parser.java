@@ -445,7 +445,7 @@ public class Parser {
 		Expect(29);
 		statementPart(scope);
 		Expect(30);
-		semantic.endForall(forRecord, control, err); 
+		semantic.endForall(forRecord, err); 
 	}
 
 	Expression  variableAccessEtc(SymbolTable scope) {

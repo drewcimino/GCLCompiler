@@ -116,8 +116,8 @@ public interface Mnemonic {
 	public static final SamOp WRST = new SamOp(26, 9, "     WRST    ");
 	public static final SamOp WRNL = new SamOp(26, 11, "     WRNL    ");
 	public static final SamOp TRNG = new SamOp(27, "     TRNG    ");
-	public static final SamOp INC = new SamOp(28, "     INC   "); // increment a location or register by 1..16
-	public static final SamOp DEC = new SamOp(29, "     DEC   "); // decrement a location or register by 1..16
+	public static final SamOp INC = new SamOp(28, "     INC     "); // increment a location or register by 1..16
+	public static final SamOp DEC = new SamOp(29, "     DEC     "); // decrement a location or register by 1..16
 	public static final SamOp HALT = new SamOp(31, 0, "     HALT    ");
 	public static final SamOp PUSH = new SamOp(31, 1, "     PUSH    ");
 	public static final SamOp POP = new SamOp(31, 2, "     POP     ");
