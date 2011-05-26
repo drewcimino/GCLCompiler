@@ -1047,8 +1047,8 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 	}
 	
 	@Override
-	public boolean isCompatible(final TypeDescriptor other) {
-		return componentType.isCompatible(other);
+	public boolean isCompatible(final TypeDescriptor other) {// uses short circuiting to avoid a dangerous hard cast.
+		return (other instanceof ArrayType) && componentType.isCompatible(((ArrayType)other).componentType) && subscriptType.isCompatible(((ArrayType)other).subscriptType);
 	}
 }
 
