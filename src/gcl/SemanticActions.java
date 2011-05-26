@@ -1977,19 +1977,19 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	
 	/***************************************************************************
 	 * Subscript.
-	 * @param array an expression of type array.
+	 * @param arrayExpression an expression of type array.
 	 * @param subscript index within array.
 	 * @return an expression indicated by subscript from array.
 	 **************************************************************************/
-	Expression subscript(VariableExpression array, Expression subscript){
+	Expression subscript(VariableExpression arrayExpression, Expression subscript){
 		
-		if(array instanceof GeneralError || subscript instanceof GeneralError){
+		if(arrayExpression instanceof GeneralError || subscript instanceof GeneralError){
 			return new ErrorExpression("$ Incompatible Types.");
 		}
-		if(array.type() instanceof ArrayType){
-			ArrayType arrayType = (ArrayType)array.type();
-			
-			if(subscript instanceof ConstantExpression){// constant subscript
+		if(arrayExpression.type() instanceof ArrayType){
+			ArrayType arrayType = (ArrayType)arrayExpression.type();
+			// constant subscript
+			if(subscript instanceof ConstantExpression){
 				ConstantExpression constantSubscript = subscript.expectConstantExpression(err);
 				// bounds check
 				if(!arrayType.subscriptType().constantFolding(constantSubscript, err)){
@@ -1997,20 +1997,23 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 				}
 				// variable access
 				int inset = (constantSubscript.value() - arrayType.subscriptType().lowerBound()) * arrayType.subscriptType().size();
-				Location indexLocation = codegen.addInset(codegen.buildOperands(array), inset);
+				Location subscriptLocation = codegen.addInset(codegen.buildOperands(arrayExpression), inset);
 				int arrayRegister = codegen.getTemp(1);
-				codegen.gen2Address(LD, arrayRegister, indexLocation);
-				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
+				codegen.genCodeComment("R" + arrayRegister + " gets array[" + constantSubscript.value() + "] +" + inset);
+				codegen.gen2Address(LD, arrayRegister, subscriptLocation);
+				return new VariableExpression(arrayType.componentType(), arrayRegister, DIRECT);
 			}
-			else{ // variable subscript - left the else for clarity.
+			// variable subscript
+			else{
 				VariableExpression variableSubscript = subscript.expectVariableExpression(err);
-				int subscriptRegister = codegen.loadRegister(variableSubscript);
 				// bounds check
+				int subscriptRegister = codegen.loadRegister(variableSubscript);
 				codegen.gen2Address(TRNG, subscriptRegister, arrayType.subscriptType().location());
 				// variable access
 				codegen.gen2Address(IS, subscriptRegister, arrayType.subscriptType().location());
 				codegen.gen2Address(IM, subscriptRegister, "#" + arrayType.componentType().size());
-				int arrayRegister = codegen.loadAddress(array);
+				int arrayRegister = codegen.loadAddress(arrayExpression);
+				codegen.genCodeComment("Variable sub allocated: " + arrayRegister);
 				codegen.gen2Address(IA, arrayRegister,DREG, subscriptRegister, UNUSED);
 				codegen.freeTemp(DREG, subscriptRegister);
 				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);

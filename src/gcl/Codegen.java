@@ -154,9 +154,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 	
 	/**
-	 * @return A new location with an inset added to the displacement of the location of an array variable.
+	 * @return A new location with an inset added to the displacement of the array location.
 	 */
 	public Location addInset(Location arrayLocation, int inset){
+		genCodeComment(arrayLocation.mode.toString() + "+" + (arrayLocation.displacement + inset) + "(" + arrayLocation.displacement + ")");
 		return new Location(arrayLocation.mode, arrayLocation.base, arrayLocation.displacement + inset);
 	}
 
