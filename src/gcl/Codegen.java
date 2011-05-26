@@ -157,9 +157,33 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @return A new location with an inset added to the displacement of the array location.
 	 */
 	public Location addInset(Location arrayLocation, int inset){
-		genCodeComment(arrayLocation.mode.toString() + "+" + (arrayLocation.displacement + inset) + "(" + arrayLocation.displacement + ")");
+		//genCodeComment(arrayLocation.mode.toString() + "+" + (arrayLocation.displacement + inset) + "(" + arrayLocation.displacement + ")");
 		return new Location(arrayLocation.mode, arrayLocation.base, arrayLocation.displacement + inset);
 	}
+	
+//	/**
+//	 * Used to access expressions stored in tuples or arrays.
+//	 * @param tupleExpression A variable expression which contains the target member.
+//	 * @param inset The relative location of the target member.
+//	 * @return An expression representing the member of baseExpression at inset.
+//	 */
+//	public Expression extractTupleComponent(VariableExpression tupleExpression, int inset){
+//		
+//		if(tupleExpression.semanticLevel() > 0 && tupleExpression.isDirect()){// case 1
+//			return new VariableExpression(/*tuple component type*/, tupleExpression.semanticLevel(), tupleExpression.offset() + inset, true);
+//		}
+//		if(tupleExpression.semanticLevel() == 0 && !tupleExpression.isDirect()){// case 2
+//			if(inset != 0){
+//				//loadRegister(baseExpression)
+//				gen2Address(IA, tupleExpression.offset(), "#" + inset);
+//			}
+//			return new VariableExpression(/*tuple component type*/, 0, );
+//		}
+//		if(tupleExpression.semanticLevel() > 0 && !tupleExpression.isDirect()){// case 3
+//		}
+//		//err.semanticError(GCLError.RELATIVE_ACCESS_ERROR);
+//		return new ErrorExpression("$ Unable to extract tuple component.");
+//	}
 
 	/**
 	 * Load a value into a register (or say which register if already loaded).
@@ -545,6 +569,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		 * @param base the register to attempt to free
 		 */
 		public void freeTemp(final Mode mode, final int base) {
+			//genCodeComment("freetemp: " + base);//TODO remove after debug
 			if (mode == DREG || mode == IREG || ((mode == INDXD ||mode == IINDXD) && base <= LAST_GENERAL_REGISTER)) {
 				if(freeRegisters[base]){
 					return; // nothing to do

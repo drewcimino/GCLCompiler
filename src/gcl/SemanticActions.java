@@ -565,6 +565,27 @@ class VariableExpression extends Expression implements CodegenConstants {
 	public VariableExpression(final TypeDescriptor type, final int register, final boolean direct) {
 		this(type, 0, register, direct);
 	}
+	
+	/**
+	 * @return level > 0 AND direct
+	 */
+	public boolean case1(){
+		return (semanticLevel() > 0 && isDirect);
+	}
+
+	/**
+	 * @return level == 0 AND indirect
+	 */
+	public boolean case2(){
+		return (semanticLevel() == 0 && !isDirect);
+	}
+	
+	/**
+	 * @return level > 0 AND indirect
+	 */
+	public boolean case3(){
+		return (semanticLevel() > 0 && !isDirect);
+	}
 
 	@Override
 	public VariableExpression expectVariableExpression(GCLErrorStream err){
@@ -1227,7 +1248,7 @@ abstract class GCLError {
 			"ERROR -> Range type required. ");
 		
 	// The following are compiler errors. Repair them.
-	static final GCLError ILLEGAL_LOAD = new Value(92,
+	static final GCLError ILLEGAL_LOAD = new Value(91,
 			"COMPILER ERROR -> The expression is null. ");
 	static final GCLError NOT_A_POINTER = new Value(92,
 			"COMPILER ERROR -> LoadPointer saw a non-pointer. ");
@@ -1241,6 +1262,8 @@ abstract class GCLError {
 			"COMPILER ERROR -> Attempt to load value with size > 4 bytes. ");
 	static final GCLError UNKNOWN_ENTRY = new Value(97,
 			"COMPILER ERROR -> An unknown entry was found. ");
+	static final GCLError ILLEGAL_ARRAY_ACCESS = new Value(98,
+			"COMPILER ERROR -> array[constant subscript] - Case 4. ");
 
 	// More of each kind of error as you go along building the language.
 
@@ -1988,34 +2011,50 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 		if(arrayExpression.type() instanceof ArrayType){
 			ArrayType arrayType = (ArrayType)arrayExpression.type();
+			
 			// constant subscript
 			if(subscript instanceof ConstantExpression){
-				ConstantExpression constantSubscript = subscript.expectConstantExpression(err);
 				// bounds check
+				ConstantExpression constantSubscript = subscript.expectConstantExpression(err);
 				if(!arrayType.subscriptType().constantFolding(constantSubscript, err)){
 					return new ErrorExpression("$ Subscript out of range.");
 				}
-				// variable access
+				// inset value
 				int inset = (constantSubscript.value() - arrayType.subscriptType().lowerBound()) * arrayType.subscriptType().size();
-				Location subscriptLocation = codegen.addInset(codegen.buildOperands(arrayExpression), inset);
-				int arrayRegister = codegen.getTemp(1);
-				codegen.genCodeComment("R" + arrayRegister + " gets array[" + constantSubscript.value() + "] +" + inset);
-				codegen.gen2Address(LD, arrayRegister, subscriptLocation);
-				return new VariableExpression(arrayType.componentType(), arrayRegister, DIRECT);
+				// access value
+				if(arrayExpression.case1()){
+					return new VariableExpression(arrayType.componentType(), arrayExpression.semanticLevel(), arrayExpression.offset() + inset, DIRECT);
+				}
+				if(arrayExpression.case2()){
+					int arrayAddressOffset = codegen.loadAddress(arrayExpression);
+					if(inset != 0){ 
+						codegen.gen2Address(IA, arrayAddressOffset, "#" + inset);
+					}
+					return new VariableExpression(arrayType.componentType(), arrayExpression.semanticLevel(), arrayAddressOffset, INDIRECT);
+				}
+				if(arrayExpression.case3()){
+					int arrayAddressOffset = codegen.loadPointer(arrayExpression);
+					if(inset != 0){ 
+						codegen.gen2Address(IA, arrayAddressOffset, "#" + inset);
+					}
+					return new VariableExpression(arrayType.componentType(), 0, arrayAddressOffset, INDIRECT);
+				}
+				err.semanticError(GCLError.ILLEGAL_ARRAY_ACCESS);
+				return new ErrorExpression("$ array[constant subscript] - Case 4");
 			}
 			// variable subscript
 			else{
-				VariableExpression variableSubscript = subscript.expectVariableExpression(err);
 				// bounds check
+				VariableExpression variableSubscript = subscript.expectVariableExpression(err);
 				int subscriptRegister = codegen.loadRegister(variableSubscript);
 				codegen.gen2Address(TRNG, subscriptRegister, arrayType.subscriptType().location());
-				// variable access
+				// inset value (offset is stored in arrayRegister)
 				codegen.gen2Address(IS, subscriptRegister, arrayType.subscriptType().location());
 				codegen.gen2Address(IM, subscriptRegister, "#" + arrayType.componentType().size());
 				int arrayRegister = codegen.loadAddress(arrayExpression);
-				codegen.genCodeComment("Variable sub allocated: " + arrayRegister);
-				codegen.gen2Address(IA, arrayRegister,DREG, subscriptRegister, UNUSED);
+				codegen.gen2Address(IA, arrayRegister, DREG, subscriptRegister, UNUSED);
 				codegen.freeTemp(DREG, subscriptRegister);
+				// access value
 				return new VariableExpression(arrayType.componentType(), arrayRegister, INDIRECT);
 			}
 		}
