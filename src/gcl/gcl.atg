@@ -178,7 +178,7 @@ doStatement<SymbolTable scope>  (. GCRecord doRecord; .)
 /*----------------------------------------------------------*/
 forStatement<SymbolTable scope>  (. ForRecord forRecord; Expression control; .)
 =
-	"forall" variableAccessEtc<^control, scope> (. forRecord = semantic.startForall(control); .) "->"
+	"forall" variableAccessEtc<^control, scope> (. forRecord = semantic.startForall(control.expectVariableExpression(err)); .) "->"
 	statementPart<scope> 
 	"llarof" (. semantic.endForall(forRecord); .).
 /*----------------------------------------------------------*/

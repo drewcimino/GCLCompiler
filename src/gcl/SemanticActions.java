@@ -2,7 +2,6 @@ package gcl;
 //TODO test0 and test8 doesn't recognize tuple type compatibility.
 //TODO Require VariableExpression in test 10 (3rd error)
 //TODO Deal with the runtime errors in 10_1 (there should only be 1 in the result file)
-//TODO Treat subscripts all together rather than loading each dimension.
 import gcl.Codegen.ConstantLike;
 import gcl.Codegen.Location;
 import gcl.SemanticActions.GCLErrorStream;
@@ -73,13 +72,11 @@ class SemanticError extends SemanticItem implements GeneralError {
 		CompilerOptions.message(message);
 	}
 
-	@Override
 	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
 		// Don't complain on error records. The complaint previously occurred when this object was created.
 		return new ErrorExpression("$ Expression Required");
 	}
 	
-	@Override
 	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err) {
 		// Don't complain on error records. The complaint previously occurred when this object was created.
 		return ErrorType.NO_TYPE;
@@ -126,6 +123,7 @@ class Identifier extends SemanticItem {
 
 /** Root of the operator hierarchy */
 abstract class Operator extends SemanticItem implements Mnemonic {
+	
 	public Operator(final String op, final SamOp opcode) {
 		value = op;
 		this.opcode = opcode;
@@ -139,15 +137,22 @@ abstract class Operator extends SemanticItem implements Mnemonic {
 		return opcode;
 	}
 	
-	public abstract ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right);
 	/**
-	 * Tells the caller if the operands are valid and complains if necessary. NOTE: It is the callers responsibility to return an ErrorExpression.
+	 * Tells the caller if the operands are valid and complains if necessary.
+	 * NOTE: It is then the callers responsibility to return an ErrorExpression.
+	 * 
 	 * @param left operand to the left.
 	 * @param right operand to the right.
 	 * @param err GCLErrorStream on which to complain. 
 	 * @return true if the operands are valid; false otherwise.
 	 */
 	public abstract boolean validOperands(Expression left, Expression right, GCLErrorStream err);
+	/**
+	 * @param left operand to the left.
+	 * @param right operand to the right
+	 * @return a new resultant constant expression computed during compile time.
+	 */
+	public abstract ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right);
 
 	private final String value;
 	private final SamOp opcode;
@@ -276,7 +281,6 @@ abstract class AddOperator extends Operator {
 		}
 	};
 	
-	@Override
 	public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
 		if(left instanceof GeneralError || right instanceof GeneralError){
 			return false;
@@ -320,7 +324,6 @@ abstract class MultiplyOperator extends Operator {
 	// executes modulusExpression instead (does not use MODULUS.samCode)
 	//
 	
-	@Override
 	public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
 		if(left instanceof GeneralError || right instanceof GeneralError){
 			return false;
@@ -354,7 +357,6 @@ abstract class BooleanOperator extends Operator {
 		}
 	};
 	
-	@Override
 	public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
 		if(left instanceof GeneralError || right instanceof GeneralError){
 			return false;
@@ -371,10 +373,13 @@ abstract class BooleanOperator extends Operator {
 	}
 }
 
+/** Used to represent string constants. Immutable. */
 class StringConstant extends SemanticItem implements ConstantLike {
 	
+	private String samString;
+	private int size;
+	
 	public StringConstant(String gclString) {
-		
 		samString = convertToSamString(gclString);
 		size = 2*(gclString.length()/2);
 	}
@@ -388,12 +393,8 @@ class StringConstant extends SemanticItem implements ConstantLike {
 	}
 	
 	private final String convertToSamString(String gclString){
-		
 		return "\"" + gclString.substring(1, gclString.length()-1).replaceAll("\\\\", "\\").replaceAll(":", "::").replaceAll("\"", ":\"") + "\"";
 	}
-	
-	private String samString;
-	private int size;
 }
 
 /**
@@ -437,7 +438,6 @@ abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
 		return new ErrorVariableExpression("$ VariableExpression Required");
 	}
 
-	@Override
 	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
 		return this;
 	}
@@ -459,12 +459,10 @@ class ErrorExpression extends Expression implements GeneralError, CodegenConstan
 		CompilerOptions.message(message);
 	}
 	
-	@Override
 	public ConstantExpression expectConstantExpression(GCLErrorStream err){
 		return new ErrorConstantExpression("$ Requires Constant Expression");
 	}
 	
-	@Override
 	public VariableExpression expectVariableExpression(GCLErrorStream err){
 		return new ErrorVariableExpression("$ Requires Variable Expression");
 	}
@@ -487,9 +485,12 @@ class ConstantExpression extends Expression implements CodegenConstants, Codegen
 		this.value = value;
 	}
 	
-	@Override
 	public ConstantExpression expectConstantExpression(final SemanticActions.GCLErrorStream err) {
 		return this;
+	}
+	
+	public boolean needsToBePushed(){
+		return false;// will never appear on the left hand side of assignment.
 	}
 
 	public String toString() {
@@ -498,8 +499,7 @@ class ConstantExpression extends Expression implements CodegenConstants, Codegen
 
 	public boolean equals(Object other) {
 		return (other instanceof ConstantExpression)
-				&& type().baseType().isCompatible(
-						((ConstantExpression) other).type().baseType())
+				&& type().baseType().isCompatible(((ConstantExpression) other).type().baseType())
 				&& ((ConstantExpression) other).value == value;
 	}
 
@@ -513,8 +513,7 @@ class ConstantExpression extends Expression implements CodegenConstants, Codegen
 }
 
 /** Used to represent errors where ConstantExpressions are expected. Immutable. */
-class ErrorConstantExpression extends ConstantExpression implements GeneralError,
-		CodegenConstants {
+class ErrorConstantExpression extends ConstantExpression implements GeneralError, CodegenConstants {
 	
 	private final String message;
 
@@ -543,20 +542,17 @@ class VariableExpression extends Expression implements CodegenConstants {
 	 * 
 	 * @param type the type of this variable
 	 * @param scope the nesting level (if >0) or 0 for a register, or -1 for stacktop
-	 * @param offset the relative offset of the cells of this variable, or the
-	 *            register number if scope is 0
+	 * @param offset the relative offset of the cells of this variable, or the register number if scope is 0
 	 * @param direct if false this represents a pointer to the variable
 	 */
-	public VariableExpression(final TypeDescriptor type, final int level, final int offset,
-			final boolean direct) {
+	public VariableExpression(final TypeDescriptor type, final int level, final int offset, final boolean direct) {
 		super(type, level);
 		this.offset = offset;
 		this.isDirect = direct;
 	}
 
 	/**
-	 * Create a temporary expression. The level is 0 and the offset is the
-	 * register number
+	 * Create a temporary expression. The level is 0 and the offset is the register number
 	 * 
 	 * @param type the type of this value
 	 * @param register the register number in which to hold it
@@ -587,14 +583,12 @@ class VariableExpression extends Expression implements CodegenConstants {
 		return (semanticLevel() > 0 && !isDirect);
 	}
 
-	@Override
 	public VariableExpression expectVariableExpression(GCLErrorStream err){
 		return this;
 	}
 	
 	public boolean needsToBePushed() { // used by parallel assignment
-		return semanticLevel() > CPU_LEVEL
-				|| (semanticLevel() == CPU_LEVEL && !isDirect);
+		return semanticLevel() > CPU_LEVEL	|| (semanticLevel() == CPU_LEVEL && !isDirect);
 	}
 
 	/**
@@ -627,8 +621,7 @@ class VariableExpression extends Expression implements CodegenConstants {
 }
 
 /** Used to represent errors where ConstantExpressions are expected. Immutable. */
-class ErrorVariableExpression extends VariableExpression implements GeneralError,
-		CodegenConstants {
+class ErrorVariableExpression extends VariableExpression implements GeneralError, CodegenConstants {
 	
 	private final String message;
 
@@ -834,7 +827,6 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 		this.size = size;
 	}
 	
-	@Override
 	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err){
 		return this;
 	}
@@ -894,7 +886,6 @@ class ErrorType extends TypeDescriptor implements GeneralError {
 		super(0);
 	}
 	
-	@Override
 	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err) {
 		return ErrorRangeType.NO_TYPE;
 	}
@@ -981,22 +972,18 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 		return true;
 	}
 	
-	@Override
 	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err){
 		return this;
 	}
 
-	@Override
 	public TypeDescriptor baseType(){
 		return baseType;
 	}
 	
-	@Override
 	public String toString(){
 		return "rangetype: " + baseType.toString();
 	}
 	
-	@Override
 	public boolean isCompatible(final TypeDescriptor other) {
 		return baseType.isCompatible(other);
 	}
@@ -1036,17 +1023,14 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 		return componentType;
 	}
 
-	@Override
 	public TypeDescriptor baseType(){
 		return this;
 	}
 	
-	@Override
 	public String toString(){
 		return "arraytype: " + componentType.toString() + " [" + subscriptType.lowerBound() + ".." + subscriptType.upperBound() + "]";
 	}
 	
-	@Override
 	public boolean isCompatible(final TypeDescriptor other) {// uses short circuiting to avoid a dangerous hard cast.
 		return (other instanceof ArrayType) && componentType.isCompatible(((ArrayType)other).componentType) && subscriptType.isCompatible(((ArrayType)other).subscriptType);
 	}
@@ -1177,8 +1161,6 @@ class TupleType extends TypeDescriptor { // mutable
 	
 		return fields.get(fieldName).type();
 	}
-
-	// TODO must override isCompatible
 
 	private class TupleField {
 		public TupleField(final int inset, final TypeDescriptor type) {
@@ -1338,6 +1320,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return true if it is ok to redefine this entry at this point.
 	 **************************************************************************/
 	private boolean OKToRedefine(final SymbolTable.Entry entry) {
+		
 		if(entry == SymbolTable.NULL_ENTRY){
 			return true;
 		}
@@ -1352,6 +1335,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param scope the symbol table used to find the identifier.
 	 **************************************************************************/
 	private void complainIfDefinedHere(final SymbolTable scope, final Identifier id) {
+		
 		SymbolTable.Entry entry = scope.lookupIdentifier(id);
 		if (!OKToRedefine(entry)) {
 			err.semanticError(GCLError.ALREADY_DEFINED);
@@ -1363,6 +1347,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * from source to dest. Both source and destination refer to expr entries .
 	 **************************************************************************/
 	private void moveBlock(final Expression source, final Expression destination) {
+		
 		if (source instanceof ErrorExpression) {
 			return;
 		}
@@ -1385,8 +1370,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * from source to dest. Source refers to an expr entry. mode, base, and
 	 * displacement give the dest.
 	 **************************************************************************/
-	private void moveBlock(final Expression source, final Codegen.Mode mode, final int base,
-			final int displacement) {
+	private void moveBlock(final Expression source, final Codegen.Mode mode, final int base, final int displacement) {
+		
 		if (source instanceof ErrorExpression) {
 			return;
 		}
@@ -1405,8 +1390,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * from source to destination. Source is given by mode, base, displacement
 	 * and destination refers to an expr entry .
 	 **************************************************************************/
-	private void moveBlock(final Codegen.Mode mode, final int base, final int displacement,
-			final Expression destination) {
+	private void moveBlock(final Codegen.Mode mode, final int base, final int displacement, final Expression destination) {
+		
 		if (destination instanceof ErrorExpression) {
 			return;
 		}
@@ -1432,6 +1417,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return an integer with one bit set
 	 **************************************************************************/
 	private int regToBits(final int reg){
+		
 		return (int)Math.pow(2, reg);
 	}
 
@@ -1441,6 +1427,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param source the expression to be pushed
 	 **************************************************************************/
 	private void pushExpression(final Expression source) {
+		
 		if (source.type().size() == INT_SIZE) {
 			int reg = codegen.loadRegister(source);
 			codegen.genPushRegister(reg);
@@ -1457,6 +1444,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param destination the destination for the pop
 	 **************************************************************************/
 	private void popExpression(final Expression destination) {
+		
 		if (destination.type().size() == INT_SIZE) {
 			int reg = codegen.getTemp(1);
 			codegen.genPopRegister(reg);
@@ -1480,6 +1468,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param destination the destination to which to move the value
 	 **************************************************************************/
 	private void simpleMove(final Expression source, final Expression destination) {
+		
 		if (destination.type().size() == INT_SIZE) {
 			int reg = codegen.loadRegister(source);
 			Codegen.Location destinationLocation = codegen .buildOperands(destination);
@@ -1499,8 +1488,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param base the base of the destination location
 	 * @param displacement the displacement of the destination location
 	 **************************************************************************/
-	private void simpleMove(final Expression source, final Codegen.Mode mode, final int base,
-			final int displacement) {
+	private void simpleMove(final Expression source, final Codegen.Mode mode, final int base, final int displacement) {
+		
 		if (source.type().size() == INT_SIZE) {
 			int reg = codegen.loadRegister(source);
 			codegen.gen2Address(STO, reg, mode, base, displacement);
@@ -1519,6 +1508,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return the semantic item that the identifier represents.
 	 **************************************************************************/
 	SemanticItem semanticValue(final SymbolTable scope, final Identifier id) {
+		
 		SymbolTable.Entry symbol = scope.lookupIdentifier(id);
 		if (symbol == SymbolTable.NULL_ENTRY) {
 			err.semanticError(GCLError.NAME_NOT_DEFINED);
@@ -1529,12 +1519,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code for an assignment. Copy the RHS expressions to the
-	 * corresponding LHS variables.
+	 * Generate code for an assignment. Copy the RHS expressions to the corresponding LHS variables.
 	 * 
 	 * @param expressions an assignment record with two expr vectors (RHSs, LHSs )
 	 **************************************************************************/
-	void parallelAssign(final AssignRecord expressions) {
+	void parallelAssign(final AssignRecord expressions) {//TODO are push and pop being used properly? are block transfers working properly?
+		
 		int i;
 		// part 1. checks and optimizations
 		if (!expressions.verify(err)) {
@@ -1574,6 +1564,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param expression (integer variable) expression
 	 **************************************************************************/
 	void readVariable(final Expression expression) {
+		
 		if (expression instanceof GeneralError) {
 			return;
 		}
@@ -1589,14 +1580,14 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	/***************************************************************************
 	 * Generate code to write a StringConstant.
 	 * 
-	 * @param expression (integer) expression
+	 * @param stringConstant value to be printed.
 	 **************************************************************************/
 	void writeString(final StringConstant stringConstant) {
+		
 		if (stringConstant instanceof GeneralError) {
 			return;
 		}
-		Codegen.Location stringLocation = codegen.buildOperands(stringConstant);
-		codegen.gen1Address(WRST, stringLocation);
+		codegen.gen1Address(WRST, codegen.buildOperands(stringConstant));
 	}
 	
 	/***************************************************************************
@@ -1605,6 +1596,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param expression (integer) expression
 	 **************************************************************************/
 	void writeExpression(final Expression expression) {
+		
 		if (expression instanceof GeneralError) {
 			return;
 		}
@@ -1621,6 +1613,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * Generate code to write an end of line mark.
 	 **************************************************************************/
 	void genEol() {
+		
 		codegen.gen0Address(WRNL);
 	}
 
@@ -1633,6 +1626,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return result expression -integer (in register)
 	 **************************************************************************/
 	Expression addExpression(final Expression left, final AddOperator op, final Expression right) {
+		
 		if(!op.validOperands(left, right, err)){
 			return new ErrorExpression("$ Incompatible Types");
 		}
@@ -1859,7 +1853,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param control expression over which the loop iterates. Must be RangeType.
 	 * @return ForRecord entry with a counter and a label for this statement.
 	 **************************************************************************/
-	ForRecord startForall(Expression control) {
+	ForRecord startForall(VariableExpression control) {//TODO can we use control as the object directly?
 		
 		RangeType bounds = control.type().expectRangeType(err);
 		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.loadRegister(control), DIRECT);
@@ -1891,7 +1885,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * If the expr represents true, jump to the next else part.
+	 * If the expression represents true, jump to the next else part.
 	 * 
 	 * @param expression Expression to be tested: must be boolean
 	 * @param entry GCRecord with the associated labels. This is updated
@@ -1934,8 +1928,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			types.enter(aType);
 			int size = aType.size();
 			int where = codegen.reserveGlobalAddress(size);
-			CompilerOptions.message("Tuple component of size " + size + " at "
-					+ where);
+			CompilerOptions.message("Tuple component of size " + size + " at " + where);
 			// Now bring all the components together into a contiguous block
 			simpleMove(field, INDXD, VARIABLE_BASE, where);
 		}
@@ -1970,6 +1963,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void declareVariable(final SymbolTable scope, final TypeDescriptor type, final Identifier id, final ParameterKind procParam) {
 		
+		codegen.genCodeComment("Declaring " + id.name() + " " + type.toString() + type.size());//TODO debugging purposes.
 		complainIfDefinedHere(scope, id);
 		VariableExpression expr = null;
 		if (currentLevel().isGlobal()) { // Global variable
@@ -2193,8 +2187,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		/**
 		 * Determine if the semantic level represents the global (i.e. 1) level.
 		 * 
-		 * @return true if the level is global. False if it is procedural at any
-		 *         level.
+		 * @return true if the level is global. False if it is procedural at any level.
 		 */
 		public boolean isGlobal() {
 			return currentLevel == GLOBAL_LEVEL;

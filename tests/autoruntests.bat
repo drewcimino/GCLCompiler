@@ -62,9 +62,9 @@ java -cp . gcl.GCLCompiler ..\tests\test11_1 ..\tests\results\test11_1list.txt
 java -cp . gcl.GCLCompiler ..\tests\test11_2 ..\tests\results\test11_2list.txt 
 ..\sam3-pc.exe
 ..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_2.result
-java -cp . gcl.GCLCompiler ..\tests\test11_3 ..\tests\results\test11_3list.txt 
-..\sam3-pc.exe
-..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_3.result
+::java -cp . gcl.GCLCompiler ..\tests\test11_3 ..\tests\results\test11_3list.txt 
+::..\sam3-pc.exe
+::..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_3.result
 java -cp . gcl.GCLCompiler ..\tests\test11_3.fix ..\tests\results\test11_3fixlist.txt 
 ..\sam3-pc.exe
 ..\macc3-pc.exe  <..\tests\test11.dat >..\tests\results\test11_3fix.result

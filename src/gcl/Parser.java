@@ -441,7 +441,7 @@ public class Parser {
 		ForRecord forRecord; Expression control; 
 		Expect(28);
 		control = variableAccessEtc(scope);
-		forRecord = semantic.startForall(control); 
+		forRecord = semantic.startForall(control.expectVariableExpression(err)); 
 		Expect(29);
 		statementPart(scope);
 		Expect(30);
