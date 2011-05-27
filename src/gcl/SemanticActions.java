@@ -2060,11 +2060,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	/***************************************************************************
 	 * Declare Range Type.
 	 * 
-	 * @param lowerBound Must be ConstantExpression.
-	 * @param upperBound Must be ConstantExpression.
+	 * @param lowerBound ConstantExpression: lower bound of the range.
+	 * @param upperBound ConstantExpression: upper bound of the range.
 	 * @param baseType Must be same as lower and upper bounds.
 	 **************************************************************************/
-	TypeDescriptor declareRangeType(final Expression lowerBound, final Expression upperBound, final TypeDescriptor baseType){
+	TypeDescriptor declareRangeType(final ConstantExpression lowerBound, final ConstantExpression upperBound, final TypeDescriptor baseType){
 		
 		boolean valid = true;
 		
@@ -2073,39 +2073,23 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			valid = false;
 			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as lower bound");
 		}
+		// complain on type mismatch
 		if(!upperBound.type().isCompatible(baseType)){
 			valid = false;
 			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as upper bound");
 		}
-		// complain lower not constant
-		if(!(lowerBound instanceof ConstantExpression)){
+		// complain lower > upper
+		if(lowerBound.value() > upperBound.value()){//TODO are ranges allowed to be =?
 			valid = false;
-			err.semanticError(GCLError.CONSTANT_REQUIRED, "lower bound");
-		}
-		// complain upper not constant
-		if(!(upperBound instanceof ConstantExpression)){
-			valid = false;
-			err.semanticError(GCLError.CONSTANT_REQUIRED, "upper bound");
+			err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lowerBound.value() + ")cannot be greater than upper bound (" + upperBound.value() + ")");
 		}
 		if(valid){
-			// safe hard cast
-			ConstantExpression lower = (ConstantExpression)lowerBound;
-			ConstantExpression upper = (ConstantExpression)upperBound;
+			// declare lower and upper constants
+			Location lowerLocation = codegen.buildOperands(lowerBound);
+			codegen.buildOperands(upperBound);
 			
-			// complain lower > upper
-			if(lower.value() > upper.value()){
-				err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lower.value() + ")cannot be greater than upper bound (" + upper.value() + ")"); 
-				valid = false;
-			}
-			if(valid){
-				// declare lower and upper constants
-				Location lowerLocation = codegen.buildOperands(lower);
-				codegen.buildOperands(upper);
-				
-				// declare and return rangetype
-				return new RangeType(baseType, lower.value(), upper.value(), lowerLocation);
-			}
-			return ErrorType.NO_TYPE;
+			// declare and return rangetype
+			return new RangeType(baseType, lowerBound.value(), upperBound.value(), lowerLocation);
 		}
 		return ErrorType.NO_TYPE;
 	}

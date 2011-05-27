@@ -334,7 +334,7 @@ public class Parser {
 		Expect(17);
 		upperBound = expression(scope);
 		Expect(15);
-		result = semantic.declareRangeType(lowerBound, upperBound, baseType); 
+		result = semantic.declareRangeType(lowerBound.expectConstantExpression(err), upperBound.expectConstantExpression(err), baseType); 
 		return result;
 	}
 
