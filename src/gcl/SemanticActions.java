@@ -1896,7 +1896,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void ifTest(final Expression expression, final GCRecord entry) {
 		
-		if(!expression.type().isCompatible(BOOLEAN_TYPE)){
+		if(!(expression instanceof GeneralError) && !expression.type().isCompatible(BOOLEAN_TYPE)){
 			err.semanticError(GCLError.BOOLEAN_REQUIRED);
 		}
 		int resultreg = codegen.loadRegister(expression);
