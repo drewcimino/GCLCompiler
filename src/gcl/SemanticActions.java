@@ -966,7 +966,7 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 	public boolean constantFolding(ConstantExpression subscript, GCLErrorStream err){
 		
 		if(subscript.value() < lowerBound || subscript.value() > upperBound){
-			err.semanticError(GCLError.VALUE_OUT_OF_RANGE);
+			err.semanticError(GCLError.VALUE_OUT_OF_RANGE, String.valueOf(subscript.value()) + " out of range: [" + lowerBound + ".." + upperBound + "]" );
 			return false;
 		}
 		return true;
@@ -1531,7 +1531,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return;
 		}
 		int entries = expressions.size(); // number of entries to process
-		if (CompilerOptions.optimize && entries == 1) {
+		if (CompilerOptions.optimize && entries == 1) {//TODO 11_1 fails without this optimization. The rest of this method doesn't work properly.
 			simpleMove(expressions.right(0), expressions.left(0));
 			return; // Optimized to skip push/pop for one item
 		}
@@ -1896,6 +1896,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void ifTest(final Expression expression, final GCRecord entry) {
 		
+		if(!expression.type().isCompatible(BOOLEAN_TYPE)){
+			err.semanticError(GCLError.BOOLEAN_REQUIRED);
+		}
 		int resultreg = codegen.loadRegister(expression);
 		int nextElse = codegen.getLabel();
 		entry.nextLabel(nextElse);
@@ -1967,7 +1970,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void declareVariable(final SymbolTable scope, final TypeDescriptor type, final Identifier id, final ParameterKind procParam) {
 		
-		codegen.genCodeComment("Declaring " + id.name() + " " + type.toString() + type.size());//TODO debugging purposes.
 		complainIfDefinedHere(scope, id);
 		VariableExpression expr = null;
 		if (currentLevel().isGlobal()) { // Global variable

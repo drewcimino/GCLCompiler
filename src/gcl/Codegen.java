@@ -569,7 +569,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		 * @param base the register to attempt to free
 		 */
 		public void freeTemp(final Mode mode, final int base) {
-			//genCodeComment("freetemp: " + base);//TODO remove after debug
 			if (mode == DREG || mode == IREG || ((mode == INDXD ||mode == IINDXD) && base <= LAST_GENERAL_REGISTER)) {
 				if(freeRegisters[base]){
 					return; // nothing to do
@@ -628,9 +627,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			return numberUsed;
 		}
 		
-		/** Print the allocated registers to the listing file
-		 * 
-		 */
+		/** Print the allocated registers to the listing file. */
 		public void printAllocated() {
 			boolean old = CompilerOptions.listCode;
 			CompilerOptions.listCode = true;
