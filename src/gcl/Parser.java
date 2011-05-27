@@ -441,11 +441,11 @@ public class Parser {
 		ForRecord forRecord; Expression control; 
 		Expect(28);
 		control = variableAccessEtc(scope);
-		forRecord = semantic.startForall(control, err); 
+		forRecord = semantic.startForall(control); 
 		Expect(29);
 		statementPart(scope);
 		Expect(30);
-		semantic.endForall(forRecord, err); 
+		semantic.endForall(forRecord); 
 	}
 
 	Expression  variableAccessEtc(SymbolTable scope) {

@@ -799,12 +799,12 @@ class GCRecord extends SemanticItem { // For guarded command statements if and d
 class ForRecord extends SemanticItem {
 	private RangeType bounds;
 	private int forLabel;
-	private VariableExpression counter;
+	private VariableExpression control;
 	
-	public ForRecord(RangeType bounds, int forLabel, VariableExpression counter){
+	public ForRecord(RangeType bounds, int forLabel, VariableExpression control){
 		this.bounds = bounds;
 		this.forLabel = forLabel;
-		this.counter = counter;
+		this.control = control;
 	}
 	
 	public RangeType bounds(){
@@ -815,8 +815,8 @@ class ForRecord extends SemanticItem {
 		return forLabel;
 	}
 	
-	public VariableExpression counter(){
-		return counter;
+	public VariableExpression control(){
+		return control;
 	}
 }
 
@@ -1330,13 +1330,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 	} // end GCLErrorStream
 
-	/***************************************************************
+	/***************************************************************************
 	 * Auxiliary Determine if a symboltable entry can safely be
 	 * redefined at this point. Only one definition is legal in a given scope.
 	 * 
 	 * @param entry a symbol table entry to be checked.
 	 * @return true if it is ok to redefine this entry at this point.
-	 */
+	 **************************************************************************/
 	private boolean OKToRedefine(final SymbolTable.Entry entry) {
 		if(entry == SymbolTable.NULL_ENTRY){
 			return true;
@@ -1425,19 +1425,21 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		codegen.freeTemp(destinationLocation);
 	}
 	
-	/** Set a bit of a word corresponding to a register number.
+	/***************************************************************************
+	 * Set a bit of a word corresponding to a register number.
+	 * 
 	 * @param reg the register to transform
 	 * @return an integer with one bit set
-	 */
+	 **************************************************************************/
 	private int regToBits(final int reg){
 		return (int)Math.pow(2, reg);
 	}
 
-	/**
+	/***************************************************************************
 	 * auxiliary Push an expression onto the run time stack
 	 * 
 	 * @param source the expression to be pushed
-	 */
+	 **************************************************************************/
 	private void pushExpression(final Expression source) {
 		if (source.type().size() == INT_SIZE) {
 			int reg = codegen.loadRegister(source);
@@ -1450,13 +1452,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 	}
 
-	/**
-	 * **************** auxiliary Pop an expression from the run time stack into
-	 * a given destination
-	 * 
-	 * @param destination
-	 *            the destination for the pop
-	 */
+	/***************************************************************************
+	 * auxiliary Pop an expression from the run time stack into a given destination
+	 * @param destination the destination for the pop
+	 **************************************************************************/
 	private void popExpression(final Expression destination) {
 		if (destination.type().size() == INT_SIZE) {
 			int reg = codegen.getTemp(1);
@@ -1473,13 +1472,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 	}
 
-	/**
+	/***************************************************************************
 	 * auxiliary Move the value of an expression from its
 	 * source to a destination
 	 * 
 	 * @param source the source of the expression
 	 * @param destination the destination to which to move the value
-	 */
+	 **************************************************************************/
 	private void simpleMove(final Expression source, final Expression destination) {
 		if (destination.type().size() == INT_SIZE) {
 			int reg = codegen.loadRegister(source);
@@ -1492,15 +1491,14 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 	}
 
-	/**
-	 * **************** auxiliary Move the value of an expression from a source
-	 * to a destination
+	/***************************************************************************
+	 * auxiliary Move the value of an expression from a source to a destination
 	 * 
 	 * @param source the source of the move
 	 * @param mode the mode of the destination's location
 	 * @param base the base of the destination location
 	 * @param displacement the displacement of the destination location
-	 */
+	 **************************************************************************/
 	private void simpleMove(final Expression source, final Codegen.Mode mode, final int base,
 			final int displacement) {
 		if (source.type().size() == INT_SIZE) {
@@ -1519,7 +1517,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param scope the current scope
 	 * @param ID and identifier to be transformed
 	 * @return the semantic item that the identifier represents.
-	 */
+	 **************************************************************************/
 	SemanticItem semanticValue(final SymbolTable scope, final Identifier id) {
 		SymbolTable.Entry symbol = scope.lookupIdentifier(id);
 		if (symbol == SymbolTable.NULL_ENTRY) {
@@ -1571,11 +1569,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code to read into an integer variable. (Must be an assignable
-	 * variable)
+	 * Generate code to read into an integer variable. (Must be an assignable variable)
 	 * 
-	 * @param expression
-	 *            (integer variable) expression
+	 * @param expression (integer variable) expression
 	 **************************************************************************/
 	void readVariable(final Expression expression) {
 		if (expression instanceof GeneralError) {
@@ -1678,8 +1674,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	/***************************************************************************
 	 * Generate code to negate a boolean expression. Result in Register.
 	 * 
-	 * @param expression expression to be negated -must be boolean
-	 * @return result expression ~boolean (in register)
+	 * @param booleanExpression expression to be negated -must be boolean
+	 * @return result expression -boolean (in register)
 	 **************************************************************************/
 	Expression negateBooleanExpression(final Expression booleanExpression){
 		
@@ -1750,7 +1746,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generate code to add two boolean expressions. Result in Register.
+	 * Generate code to and two boolean expressions. Result in Register.
 	 * 
 	 * @param left an expression (lhs)Must be boolean
 	 * @param right an expression (rhs)Must be boolean
@@ -1858,37 +1854,40 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Create a ForRecord for the for loop.
-	 * Generates and initializes the counter; 
-	 * Generate the for label at the beginning.
+	 * Generates code to begin a forall loop.
 	 * 
+	 * @param control expression over which the loop iterates. Must be RangeType.
 	 * @return ForRecord entry with a counter and a label for this statement.
 	 **************************************************************************/
-	ForRecord startForall(Expression control, SemanticActions.GCLErrorStream err) {
+	ForRecord startForall(Expression control) {
 		
 		RangeType bounds = control.type().expectRangeType(err);
-		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.getTemp(1), DIRECT);
+		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.loadRegister(control), DIRECT);
+		// Initialize the control.
 		codegen.gen2Address(LD, forCounter.offset(), "#" + bounds.lowerBound());
+		// Label top of loop.
 		int forLabel = codegen.getLabel();
 		codegen.genLabel('F', forLabel);
+		// Store the counter value to the control address.
 		codegen.gen2Address(STO, forCounter.offset(), codegen.buildOperands(control));
 		return new ForRecord(bounds, forLabel, forCounter);
 	}
 	
 	/***************************************************************************
-	 * Increments the for counter.
-	 * Tests counter in bounds.
-	 * Jumps to top.
-	 * Frees counter.
+	 * Generates code to end a forall loop.
 	 * 
 	 * @param entry ForRecord holding the counter and label for this statement.
 	 **************************************************************************/
-	void endForall(final ForRecord entry, SemanticActions.GCLErrorStream err) {
+	void endForall(final ForRecord entry) {
 		
-		codegen.gen2Address(INC, entry.counter().offset(), "1");
-		codegen.gen2Address(IC, entry.counter().offset(), "#" + entry.bounds().upperBound());
+		// Increment the control.
+		codegen.gen2Address(INC, entry.control().offset(), "1");
+		// Test control in bounds.
+		codegen.gen2Address(IC, entry.control().offset(), "#" + entry.bounds().upperBound());
+		// Jump to top.
 		codegen.genJumpLabel(JLE, 'F', entry.forLabel());
-		codegen.freeTemp(codegen.buildOperands(entry.counter()));
+		// Free control register.
+		codegen.freeTemp(codegen.buildOperands(entry.control()));
 	}
 
 	/***************************************************************************
@@ -1919,8 +1918,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Create a tuple from a list of expressions Both the type and the value
-	 * must be created.
+	 * Create a tuple from a list of expressions Both the type and the value must be created.
 	 * 
 	 * @param tupleFields an expression list with the fields of the tuple
 	 * @return an expression representing the tuple value as a whole.
@@ -1946,18 +1944,17 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Enter the identifier into the symbol table, marking it as a constant of
-	 * the given type.
+	 * Enter the identifier into the symbol table along with its constant expression.
 	 * 
-	 * @param scope the current symbol table
-	 * @param type the type to be of the constant being defined
-	 * @param ID identifier to be defined
+	 * @param scope SymbolTable into which this entry should be added.
+	 * @param id Identifier of this constant expression.
+	 * @param expression The defined constant expression.
 	 **************************************************************************/
-	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expr) {
+	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expression) {
 		
 		complainIfDefinedHere(scope, id);
-		codegen.buildOperands(expr);
-		SymbolTable.Entry constant = scope.newEntry("constant", id, expr);
+		codegen.buildOperands(expression);
+		SymbolTable.Entry constant = scope.newEntry("constant", id, expression);
 		CompilerOptions.message("Entering: " + constant);
 	}
 	
@@ -1988,6 +1985,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 
 	/***************************************************************************
 	 * Declare Array Type.
+	 * 
+	 * @param subscripts Stack<RangeType> representing the successive dimension bounds of this array.
+	 * @param componentType The type of elements this ArrayType contains.
 	 **************************************************************************/
 	TypeDescriptor declareArrayType(java.util.Stack<RangeType> subscripts, final TypeDescriptor componentType){
 		
@@ -2000,6 +2000,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	
 	/***************************************************************************
 	 * Subscript.
+	 * 
 	 * @param arrayExpression an expression of type array.
 	 * @param subscript index within array.
 	 * @return an expression indicated by subscript from array.
@@ -2064,6 +2065,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	
 	/***************************************************************************
 	 * Declare Range Type.
+	 * 
+	 * @param lowerBound Must be ConstantExpression.
+	 * @param upperBound Must be ConstantExpression.
+	 * @param baseType Must be same as lower and upper bounds.
 	 **************************************************************************/
 	TypeDescriptor declareRangeType(final Expression lowerBound, final Expression upperBound, final TypeDescriptor baseType){
 		
@@ -2112,12 +2117,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Enter the identifier into the symbol table, marking it as a type of
-	 * the given type.
+	 * Enter id into the symbol table, associating it with the given type.
 	 * 
 	 * @param scope the current symbol table
-	 * @param type the type to be of the typedefinition being defined
-	 * @param ID identifier to be defined
+	 * @param type TypeDescriptor to be entered with id.
+	 * @param id Identifier representing type in the symbol table.
 	 **************************************************************************/
 	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id){
 		
@@ -2153,18 +2157,17 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		codegen.genCodePostamble();
 	}
 
-	/**
-	 * Get a reference to the object that maintains the current semantic
-	 * (procedure nesting) level.
+	/***************************************************************************
+	 * Get a reference to the object that maintains the current semantic (procedure nesting) level.
 	 * 
 	 * @return the current semantic level object.
-	 */
+	 **************************************************************************/
 	SemanticLevel currentLevel() {
 		
 		return currentLevel;
 	}
 
-	/**
+	/***************************************************************************
 	 * Objects of this class represent the semantic level at which the compiler
 	 * is currently translating. The global level is the level of modules. Level
 	 * 2 is the level of procedures. Level 3... are the levels of nested
@@ -2172,7 +2175,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * at its declaration. These numbers are used by the compiler to set up the
 	 * runtime so that non-local variables (and other items) can be found at
 	 * runtime.
-	 */
+	 **************************************************************************/
 	static class SemanticLevel {
 		private int currentLevel = GLOBAL_LEVEL;// Never less than one. Current
 
