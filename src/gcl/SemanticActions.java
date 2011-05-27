@@ -1032,7 +1032,11 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 	}
 	
 	public boolean isCompatible(final TypeDescriptor other) {// uses short circuiting to avoid a dangerous hard cast.
-		return (other instanceof ArrayType) && componentType.isCompatible(((ArrayType)other).componentType) && subscriptType.isCompatible(((ArrayType)other).subscriptType);
+		return (other instanceof ArrayType) &&
+			   (componentType.isCompatible(((ArrayType)other).componentType)) &&
+			   (subscriptType.isCompatible(((ArrayType)other).subscriptType)) &&// TODO remove this line if [false..true] is compatible with [0..1].
+			   (subscriptType.lowerBound() == ((ArrayType)other).subscriptType.lowerBound()) &&
+			   (subscriptType.upperBound() == ((ArrayType)other).subscriptType.upperBound());
 	}
 }
 
@@ -1896,10 +1900,14 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void ifTest(final Expression expression, final GCRecord entry) {
 		
+		int resultreg;
 		if(!(expression instanceof GeneralError) && !expression.type().isCompatible(BOOLEAN_TYPE)){
 			err.semanticError(GCLError.BOOLEAN_REQUIRED);
+			resultreg = codegen.loadRegister(new ErrorExpression("$ Required Boolean Type"));
 		}
-		int resultreg = codegen.loadRegister(expression);
+		else{
+			resultreg = codegen.loadRegister(expression);
+		}	
 		int nextElse = codegen.getLabel();
 		entry.nextLabel(nextElse);
 		codegen.gen2Address(IC, resultreg, IMMED, UNUSED, 1);
@@ -2012,7 +2020,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 		if(arrayExpression.type() instanceof ArrayType){
 			ArrayType arrayType = (ArrayType)arrayExpression.type();
-			
+			// complain on subscript type mismatch.
+			if(!arrayType.subscriptType().isCompatible(subscript.type())){
+				err.semanticError(GCLError.TYPE_MISMATCH);
+				return new ErrorExpression("$ Incompatible Subscript Type.");
+			}
 			// constant subscript
 			if(subscript instanceof ConstantExpression){
 				// bounds check
