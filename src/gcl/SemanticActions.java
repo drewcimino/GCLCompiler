@@ -1574,6 +1574,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 		Codegen.Location expressionLocation = codegen.buildOperands(expression);
 		codegen.gen1Address(RDI, expressionLocation);
+		// bounds check
+		if (expression.type() instanceof RangeType){
+			codegen.gen2Address(TRNG, codegen.loadRegister(expression), expression.type().expectRangeType(err).location());
+		}
 		codegen.freeTemp(expressionLocation);
 	}
 
