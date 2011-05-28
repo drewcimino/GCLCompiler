@@ -3,6 +3,7 @@ package gcl;
 import java.io.PrintWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.NoSuchElementException;
 import java.util.Stack;
 import java.util.Iterator;
 
@@ -161,29 +162,47 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		return new Location(arrayLocation.mode, arrayLocation.base, arrayLocation.displacement + inset);
 	}
 	
-//	/**
-//	 * Used to access expressions stored in tuples or arrays.
-//	 * @param tupleExpression A variable expression which contains the target member.
-//	 * @param inset The relative location of the target member.
-//	 * @return An expression representing the member of baseExpression at inset.
-//	 */
-//	public Expression extractTupleComponent(VariableExpression tupleExpression, int inset){
-//		
-//		if(tupleExpression.semanticLevel() > 0 && tupleExpression.isDirect()){// case 1
-//			return new VariableExpression(/*tuple component type*/, tupleExpression.semanticLevel(), tupleExpression.offset() + inset, true);
-//		}
-//		if(tupleExpression.semanticLevel() == 0 && !tupleExpression.isDirect()){// case 2
-//			if(inset != 0){
-//				//loadRegister(baseExpression)
-//				gen2Address(IA, tupleExpression.offset(), "#" + inset);
-//			}
-//			return new VariableExpression(/*tuple component type*/, 0, );
-//		}
-//		if(tupleExpression.semanticLevel() > 0 && !tupleExpression.isDirect()){// case 3
-//		}
-//		//err.semanticError(GCLError.RELATIVE_ACCESS_ERROR);
-//		return new ErrorExpression("$ Unable to extract tuple component.");
-//	}
+	/**
+	 * Used to extract a component stored in a tuple.
+	 *
+	 * @param tupleExpression A tuple which contains the target component.
+	 * @param field Identifier of the target member.
+	 * @return tupleExpression@field.
+	 */
+	public Expression extractTupleComponent(VariableExpression tupleExpression, Identifier field){
+		
+		TupleType tupleType = tupleExpression.type().expectTupleType(err);
+		TypeDescriptor fieldType;
+		int fieldInset;
+		try{
+			fieldType = tupleType.getType(field);
+			fieldInset = tupleType.getInset(field);
+		}
+		catch(NoSuchElementException e){
+			err.semanticError(GCLError.NAME_NOT_DEFINED);
+			return new ErrorExpression("$ Invalid tuple member identifier.");
+		}
+		
+		if(tupleExpression.case1()){
+			return new VariableExpression(fieldType, tupleExpression.semanticLevel(), tupleExpression.offset() + fieldInset, DIRECT);
+		}
+		if(tupleExpression.case2()){
+			int tupleAddressOffset = loadAddress(tupleExpression);
+			if(fieldInset != 0){ 
+				gen2Address(IA, tupleAddressOffset, "#" + fieldInset);
+			}
+			return new VariableExpression(fieldType, tupleExpression.semanticLevel(), tupleAddressOffset, INDIRECT);
+		}
+		if(tupleExpression.case3()){
+			int tupleAddressOffset = loadPointer(tupleExpression);
+			if(fieldInset != 0){ 
+				gen2Address(IA, tupleAddressOffset, "#" + fieldInset);
+			}
+			return new VariableExpression(fieldType, 0, tupleAddressOffset, INDIRECT);
+		}
+		err.semanticError(GCLError.ILLEGAL_TUPLE_ACCESS);
+		return new ErrorExpression("$ Unable to extract tuple component.");
+	}
 
 	/**
 	 * Load a value into a register (or say which register if already loaded).

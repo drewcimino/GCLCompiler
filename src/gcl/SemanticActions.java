@@ -37,7 +37,7 @@ abstract class SemanticItem {
 	 * Soft Cast
 	 * @return "this" if it is a type and a NO_TYPE otherwise.
 	 */
-	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err) {
+	public TypeDescriptor expectTypeDescriptor(final GCLErrorStream err) {
 		err.semanticError(GCLError.TYPE_REQUIRED);
 		return ErrorType.NO_TYPE;
 	}
@@ -46,7 +46,7 @@ abstract class SemanticItem {
 	 * Soft Cast
 	 * @return "this" if it is an expression and an ErrorExpression otherwise.
 	 */
-	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
+	public Expression expectExpression(final GCLErrorStream err) {
 		err.semanticError(GCLError.EXPRESSION_REQUIRED);
 		return new ErrorExpression("$ Expression Required");
 	}
@@ -72,12 +72,12 @@ class SemanticError extends SemanticItem implements GeneralError {
 		CompilerOptions.message(message);
 	}
 
-	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
+	public Expression expectExpression(final GCLErrorStream err) {
 		// Don't complain on error records. The complaint previously occurred when this object was created.
 		return new ErrorExpression("$ Expression Required");
 	}
 	
-	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err) {
+	public TypeDescriptor expectTypeDescriptor(final GCLErrorStream err) {
 		// Don't complain on error records. The complaint previously occurred when this object was created.
 		return ErrorType.NO_TYPE;
 	}
@@ -424,7 +424,7 @@ abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
 	 * Soft Cast
 	 * @return "this" if it is a ConstantExpression and an ErrorConstantExpression otherwise.
 	 */
-	public ConstantExpression expectConstantExpression(final SemanticActions.GCLErrorStream err) {
+	public ConstantExpression expectConstantExpression(final GCLErrorStream err) {
 		err.semanticError(GCLError.CONSTANT_REQUIRED);
 		return new ErrorConstantExpression("$ ConstantExpression Required");
 	}
@@ -433,12 +433,12 @@ abstract class Expression extends SemanticItem implements Codegen.MaccSaveable {
 	 * Soft Cast
 	 * @return "this" if it is a VariableExpression and an ErrorVariableExpression otherwise.
 	 */
-	public VariableExpression expectVariableExpression(final SemanticActions.GCLErrorStream err) {
+	public VariableExpression expectVariableExpression(final GCLErrorStream err) {
 		err.semanticError(GCLError.VARIABLE_REQUIRED);
 		return new ErrorVariableExpression("$ VariableExpression Required");
 	}
 
-	public Expression expectExpression(final SemanticActions.GCLErrorStream err) {
+	public Expression expectExpression(final GCLErrorStream err) {
 		return this;
 	}
 
@@ -459,11 +459,11 @@ class ErrorExpression extends Expression implements GeneralError, CodegenConstan
 		CompilerOptions.message(message);
 	}
 	
-	public ConstantExpression expectConstantExpression(GCLErrorStream err){
+	public ConstantExpression expectConstantExpression(final GCLErrorStream err){
 		return new ErrorConstantExpression("$ Requires Constant Expression");
 	}
 	
-	public VariableExpression expectVariableExpression(GCLErrorStream err){
+	public VariableExpression expectVariableExpression(final GCLErrorStream err){
 		return new ErrorVariableExpression("$ Requires Variable Expression");
 	}
 
@@ -485,7 +485,7 @@ class ConstantExpression extends Expression implements CodegenConstants, Codegen
 		this.value = value;
 	}
 	
-	public ConstantExpression expectConstantExpression(final SemanticActions.GCLErrorStream err) {
+	public ConstantExpression expectConstantExpression(final GCLErrorStream err) {
 		return this;
 	}
 	
@@ -534,7 +534,7 @@ class ErrorConstantExpression extends ConstantExpression implements GeneralError
  */
 class VariableExpression extends Expression implements CodegenConstants {
 	
-	private final int offset; // relative offset of cell or register number
+	private final int offset; //  offset of cell or register number
 	private final boolean isDirect; // if false this is a pointer to a location.
 	
 	/**
@@ -542,7 +542,7 @@ class VariableExpression extends Expression implements CodegenConstants {
 	 * 
 	 * @param type the type of this variable
 	 * @param scope the nesting level (if >0) or 0 for a register, or -1 for stacktop
-	 * @param offset the relative offset of the cells of this variable, or the register number if scope is 0
+	 * @param offset the  offset of the cells of this variable, or the register number if scope is 0
 	 * @param direct if false this represents a pointer to the variable
 	 */
 	public VariableExpression(final TypeDescriptor type, final int level, final int offset, final boolean direct) {
@@ -583,7 +583,7 @@ class VariableExpression extends Expression implements CodegenConstants {
 		return (semanticLevel() > 0 && !isDirect);
 	}
 
-	public VariableExpression expectVariableExpression(GCLErrorStream err){
+	public VariableExpression expectVariableExpression(final GCLErrorStream err){
 		return this;
 	}
 	
@@ -592,10 +592,10 @@ class VariableExpression extends Expression implements CodegenConstants {
 	}
 
 	/**
-	 * The relative address of the variable. What it is relative to depends on
-	 * its scopeLevel. If the level is 1 it is relative to R15.
+	 * The  address of the variable. What it is  to depends on
+	 * its scopeLevel. If the level is 1 it is  to R15.
 	 * 
-	 * @return the relative offset from its base register.
+	 * @return the  offset from its base register.
 	 */
 	public int offset() {
 		return offset;
@@ -827,7 +827,7 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 		this.size = size;
 	}
 	
-	public TypeDescriptor expectTypeDescriptor(final SemanticActions.GCLErrorStream err){
+	public TypeDescriptor expectTypeDescriptor(final GCLErrorStream err){
 		return this;
 	}
 	
@@ -835,9 +835,18 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 	 * Soft Cast
 	 * @return "this" if it is a range type and a NO_TYPE otherwise.
 	 */
-	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err) {
+	public RangeType expectRangeType(final GCLErrorStream err) {
 		err.semanticError(GCLError.RANGE_REQUIRED);
 		return ErrorRangeType.NO_TYPE;
+	}
+	
+	/**
+	 * Soft Cast
+	 * @return "this" if it is a range type and a NO_TYPE otherwise.
+	 */
+	public TupleType expectTupleType(final GCLErrorStream err) {
+		err.semanticError(GCLError.TUPLE_REQUIRED);
+		return ErrorTupleType.NO_TYPE;
 	}
 
 	/**
@@ -882,12 +891,17 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 
 /** Represents an error where a type is expected. Singleton. Immutable. */
 class ErrorType extends TypeDescriptor implements GeneralError {
+	
 	private ErrorType() {
 		super(0);
 	}
 	
-	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err) {
+	public RangeType expectRangeType(final GCLErrorStream err) {
 		return ErrorRangeType.NO_TYPE;
+	}
+	
+	public TupleType expectTupleType(final GCLErrorStream err) {
+		return ErrorTupleType.NO_TYPE;
 	}
 
 	public String toString() {
@@ -972,7 +986,7 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 		return true;
 	}
 	
-	public RangeType expectRangeType(final SemanticActions.GCLErrorStream err){
+	public RangeType expectRangeType(final GCLErrorStream err){
 		return this;
 	}
 
@@ -989,10 +1003,10 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 	}
 }
 
-/** Used to represent errors where ErrorRangeType are expected. Immutable. */
+/** Used to represent errors where RangeType is expected. Immutable. */
 class ErrorRangeType extends RangeType implements GeneralError, CodegenConstants {
 
-	public ErrorRangeType() {
+	private ErrorRangeType() {
 		super(ErrorType.NO_TYPE, -1, -1, new Location(DMEM, UNUSED, UNUSED));
 	}
 
@@ -1034,7 +1048,7 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 	public boolean isCompatible(final TypeDescriptor other) {// uses short circuiting to avoid a dangerous hard cast.
 		return (other instanceof ArrayType) &&
 			   (componentType.isCompatible(((ArrayType)other).componentType)) &&
-			   (subscriptType.isCompatible(((ArrayType)other).subscriptType)) &&// TODO remove this line if [false..true] is compatible with [0..1].
+			   (subscriptType.isCompatible(((ArrayType)other).subscriptType)) &&
 			   (subscriptType.lowerBound() == ((ArrayType)other).subscriptType.lowerBound()) &&
 			   (subscriptType.upperBound() == ((ArrayType)other).subscriptType.upperBound());
 	}
@@ -1133,12 +1147,15 @@ class TupleType extends TypeDescriptor { // mutable
 			names.add(id);
 		}
 	}
+	
+	public TupleType expectTupleType(final GCLErrorStream err){
+		return this;
+	}
 
 	public String toString() {
 		String result = "tupleType:[";
 		for (int i = 0; i < fields.size(); ++i) {
-			result += fields.get(names.get(i)) + " : "
-					+ names.get(i) + ", ";// type);
+			result += fields.get(names.get(i)) + " : " + names.get(i) + ", ";// type);
 		}
 		result += "] with size: " + size();
 		return result;
@@ -1157,13 +1174,24 @@ class TupleType extends TypeDescriptor { // mutable
 	 * Retrieve a named component type of the tuple. It might throw
 	 * NoSuchElementException if the argument is invalid.
 	 * 
-	 * @param fieldName
-	 *            the name of the desired component type
+	 * @param fieldName the name of the desired component type
 	 * @return the type of the named component
 	 */
 	public TypeDescriptor getType(final Identifier fieldName) { // null return value possible
 	
 		return fields.get(fieldName).type();
+	}
+	
+	/**
+	 * Retrieve a named component inset of the tuple. It might throw
+	 * NoSuchElementException if the argument is invalid.
+	 * 
+	 * @param fieldName the name of the desired component inset
+	 * @return the inset of the named component
+	 */
+	public int getInset(final Identifier fieldName) { // null return value possible
+	
+		return fields.get(fieldName).inset();
 	}
 
 	private class TupleField {
@@ -1187,6 +1215,20 @@ class TupleType extends TypeDescriptor { // mutable
 		private final int inset;
 		private final TypeDescriptor type;
 	}
+}
+
+/** Used to represent errors where TupleType is expected. Immutable. */
+class ErrorTupleType extends TupleType implements GeneralError, CodegenConstants {
+
+	private ErrorTupleType() {
+		super(new TypeList());
+	}
+
+	public String toString() {
+		return "error tuple type.";
+	}
+	
+	public static final ErrorTupleType NO_TYPE = new ErrorTupleType();
 }
 
 // --------------------- Semantic Error Values ----------------------------
@@ -1232,6 +1274,8 @@ abstract class GCLError {
 			"ERROR -> Array expression required. ");
 	static final GCLError RANGE_REQUIRED = new Value(16,
 			"ERROR -> Range type required. ");
+	static final GCLError TUPLE_REQUIRED = new Value(17,
+			"ERROR -> Tuple type required. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(91,
@@ -1250,6 +1294,8 @@ abstract class GCLError {
 			"COMPILER ERROR -> An unknown entry was found. ");
 	static final GCLError ILLEGAL_ARRAY_ACCESS = new Value(98,
 			"COMPILER ERROR -> array[constant subscript] - Case 4. ");
+	static final GCLError ILLEGAL_TUPLE_ACCESS = new Value(98,
+			"COMPILER ERROR -> extractTupleComponent - Case 4. ");
 
 	// More of each kind of error as you go along building the language.
 
@@ -2053,7 +2099,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 					return new VariableExpression(arrayType.componentType(), 0, arrayAddressOffset, INDIRECT);
 				}
 				err.semanticError(GCLError.ILLEGAL_ARRAY_ACCESS);
-				return new ErrorExpression("$ array[constant subscript] - Case 4");
+				return new ErrorExpression("$ Unable to access array member.");
 			}
 			// variable subscript
 			else{
@@ -2097,7 +2143,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as upper bound");
 		}
 		// complain lower > upper
-		if(lowerBound.value() > upperBound.value()){//TODO are ranges allowed to be =?
+		if(lowerBound.value() > upperBound.value()){//TODO are ranges allowed to be =? [1..1]
 			valid = false;
 			err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lowerBound.value() + ")cannot be greater than upper bound (" + upperBound.value() + ")");
 		}
