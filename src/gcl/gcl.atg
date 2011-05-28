@@ -303,9 +303,11 @@ variableAccessEtc<^Expression result, SymbolTable scope>
 /*----------------------------------------------------------*/
 subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
 =
-	(. result = identifier.expectExpression(err); Expression subscript; SemanticItem component; .)
+	(. result = identifier.expectExpression(err); Expression subscript;.)
 	{  "[" expression<^subscript, scope> "]" (. result = semantic.subscript(result.expectVariableExpression(err), subscript); .)
-	 | "@" qualifiedIdentifier<^component, scope> (. /*result = semantic.tupleComponent(result, component.expectTypeDescriptor(err).expectTupleType(err));*/ .) }.
+	 | "@" identifier (. String component = currentToken().spelling();
+	                     Identifier fieldName = new Identifier(component);
+	                     result = semantic.tupleComponent(result.expectVariableExpression(err), fieldName); .) }.
 /*----------------------------------------------------------*/
 booleanConstant
 =

@@ -166,17 +166,17 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * Used to extract a component stored in a tuple.
 	 *
 	 * @param tupleExpression A tuple which contains the target component.
-	 * @param field Identifier of the target member.
-	 * @return tupleExpression@field.
+	 * @param fieldName Identifier of the target member.
+	 * @return tupleExpression@fieldName
 	 */
-	public Expression extractTupleComponent(VariableExpression tupleExpression, Identifier field){
+	public Expression extractTupleComponent(VariableExpression tupleExpression, Identifier fieldName){
 		
 		TupleType tupleType = tupleExpression.type().expectTupleType(err);
 		TypeDescriptor fieldType;
 		int fieldInset;
 		try{
-			fieldType = tupleType.getType(field);
-			fieldInset = tupleType.getInset(field);
+			fieldType = tupleType.getType(fieldName);
+			fieldInset = tupleType.getInset(fieldName);
 		}
 		catch(NoSuchElementException e){
 			err.semanticError(GCLError.NAME_NOT_DEFINED);

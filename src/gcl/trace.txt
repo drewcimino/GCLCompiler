@@ -199,7 +199,7 @@ Cross reference list:
   "constant"     83
   "do"          176
   "end"          66
-  "false"       312
+  "false"       314
   "fi"          188
   "forall"      181
   "if"          187
@@ -211,7 +211,7 @@ Cross reference list:
   "range"       111
   "read"        151
   "skip"        147
-  "true"        312
+  "true"        314
   "tuple"       133
   "typedefinit  117
   "write"       156
@@ -222,7 +222,7 @@ Cross reference list:
   arrayType    -101  122
   assignStatem -164  144
   block         -64   61
-  booleanConst -310  243
+  booleanConst -312  243
   constantDefi  -80   77
   definition    -74   68
   definitionPa  -68   59   66
@@ -235,12 +235,12 @@ Cross reference list:
   gclString     162
   guardedComma -194  192  192
   guardedComma -190  176  187
-  identifier    135  280  285  294
+  identifier    135  280  285  294  308
   ifStatement  -185  144
   module        -55   51   52
   multiplyOper -272  233
   numeral       240
-  qualifiedIde -278  104  105  128  302  308
+  qualifiedIde -278  104  105  128  302
   rangeType    -108  122
   readStatemen -149  143
   relationalEx -209  207  207
@@ -320,8 +320,8 @@ Symbol Table:
  47 "/"            t    false               275 fixedToken
  48 "\\"           t    false               276 fixedToken
  49 "@"            t    false               308 fixedToken
- 50 "true"         t    false               312 litToken
- 51 "false"        t    false               312 litToken
+ 50 "true"         t    false               314 litToken
+ 51 "false"        t    false               314 litToken
  52 ???            t    false                 0 fixedToken
  53 option1        pr   false                28 fixedToken
  54 option3        pr   false                30 fixedToken
@@ -367,7 +367,7 @@ Symbol Table:
  34 addOperator    nt   false   262 false   267 fixedToken
  35 factor         nt   true    220 false   237 fixedToken
  36 multiplyOper   nt   false   268 false   272 fixedToken
- 37 booleanConst   nt   false   296 false   310 fixedToken
+ 37 booleanConst   nt   false   296 false   312 fixedToken
  38 subsAndCompo   nt   true    283 true    304 fixedToken
 
 Literal Tokens:

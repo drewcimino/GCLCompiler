@@ -658,7 +658,7 @@ public class Parser {
 
 	Expression  subsAndCompons(SemanticItem identifier, SymbolTable scope) {
 		Expression  result;
-		result = identifier.expectExpression(err); Expression subscript; SemanticItem component; 
+		result = identifier.expectExpression(err); Expression subscript;
 		while (la.kind == 14 || la.kind == 49) {
 			if (la.kind == 14) {
 				Get();
@@ -667,8 +667,10 @@ public class Parser {
 				result = semantic.subscript(result.expectVariableExpression(err), subscript); 
 			} else {
 				Get();
-				component = qualifiedIdentifier(scope);
-				
+				Expect(1);
+				String component = currentToken().spelling();
+				Identifier fieldName = new Identifier(component);
+				result = semantic.tupleComponent(result.expectVariableExpression(err), fieldName); 
 			}
 		}
 		return result;

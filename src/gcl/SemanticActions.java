@@ -2053,6 +2053,57 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
+	 * Declare Range Type.
+	 * 
+	 * @param lowerBound ConstantExpression: lower bound of the range.
+	 * @param upperBound ConstantExpression: upper bound of the range.
+	 * @param baseType Must be same as lower and upper bounds.
+	 **************************************************************************/
+	TypeDescriptor declareRangeType(final ConstantExpression lowerBound, final ConstantExpression upperBound, final TypeDescriptor baseType){
+		
+		boolean valid = true;
+		
+		// complain on type mismatch
+		if(!lowerBound.type().isCompatible(baseType)){
+			valid = false;
+			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as lower bound");
+		}
+		// complain on type mismatch
+		if(!upperBound.type().isCompatible(baseType)){
+			valid = false;
+			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as upper bound");
+		}
+		// complain lower > upper
+		if(lowerBound.value() > upperBound.value()){//TODO are ranges allowed to be =? [1..1]
+			valid = false;
+			err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lowerBound.value() + ")cannot be greater than upper bound (" + upperBound.value() + ")");
+		}
+		if(valid){
+			// declare lower and upper constants
+			Location lowerLocation = codegen.buildOperands(lowerBound);
+			codegen.buildOperands(upperBound);
+			
+			// declare and return rangetype
+			return new RangeType(baseType, lowerBound.value(), upperBound.value(), lowerLocation);
+		}
+		return ErrorType.NO_TYPE;
+	}
+	
+	/***************************************************************************
+	 * Enter id into the symbol table, associating it with the given type.
+	 * 
+	 * @param scope the current symbol table
+	 * @param type TypeDescriptor to be entered with id.
+	 * @param id Identifier representing type in the symbol table.
+	 **************************************************************************/
+	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id){
+		
+		complainIfDefinedHere(scope, id);
+		scope.newEntry("type", id, type);
+		CompilerOptions.message("Entering: " + type);
+	}
+	
+	/***************************************************************************
 	 * Subscript.
 	 * 
 	 * @param arrayExpression an expression of type array.
@@ -2122,54 +2173,14 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Declare Range Type.
+	 * tuple field.
 	 * 
-	 * @param lowerBound ConstantExpression: lower bound of the range.
-	 * @param upperBound ConstantExpression: upper bound of the range.
-	 * @param baseType Must be same as lower and upper bounds.
+	 * @param tupleExpression an expression of type tuple.
+	 * @param fieldName identifier of a tuple member.
+	 * @return tupleExpression@fieldName
 	 **************************************************************************/
-	TypeDescriptor declareRangeType(final ConstantExpression lowerBound, final ConstantExpression upperBound, final TypeDescriptor baseType){
-		
-		boolean valid = true;
-		
-		// complain on type mismatch
-		if(!lowerBound.type().isCompatible(baseType)){
-			valid = false;
-			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as lower bound");
-		}
-		// complain on type mismatch
-		if(!upperBound.type().isCompatible(baseType)){
-			valid = false;
-			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as upper bound");
-		}
-		// complain lower > upper
-		if(lowerBound.value() > upperBound.value()){//TODO are ranges allowed to be =? [1..1]
-			valid = false;
-			err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lowerBound.value() + ")cannot be greater than upper bound (" + upperBound.value() + ")");
-		}
-		if(valid){
-			// declare lower and upper constants
-			Location lowerLocation = codegen.buildOperands(lowerBound);
-			codegen.buildOperands(upperBound);
-			
-			// declare and return rangetype
-			return new RangeType(baseType, lowerBound.value(), upperBound.value(), lowerLocation);
-		}
-		return ErrorType.NO_TYPE;
-	}
-	
-	/***************************************************************************
-	 * Enter id into the symbol table, associating it with the given type.
-	 * 
-	 * @param scope the current symbol table
-	 * @param type TypeDescriptor to be entered with id.
-	 * @param id Identifier representing type in the symbol table.
-	 **************************************************************************/
-	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id){
-		
-		complainIfDefinedHere(scope, id);
-		scope.newEntry("type", id, type);
-		CompilerOptions.message("Entering: " + type);
+	Expression tupleComponent(VariableExpression tupleExpression, Identifier fieldName){
+		return codegen.extractTupleComponent(tupleExpression, fieldName);
 	}
 	
 	/***************************************************************************
