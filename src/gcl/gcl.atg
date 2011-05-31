@@ -55,7 +55,7 @@ gcl
 module<SymbolTable scope> 
 = 
 	(. String result; .)
-	"module" validIdentifier<^result>
+	"module" validIdentifier<^result> (. semantic.declareModule(scope, new Identifier(result)); .)
 		definitionPart<scope>
 	[ "private" (. SymbolTable privateScope = scope.openScope(false); .)
 		block<privateScope>
@@ -278,14 +278,14 @@ multiplyOperator<^MultiplyOperator op > 	(. op = null; .)
 qualifiedIdentifier<^SemanticItem result, SymbolTable scope> 
 =
 identifier 
-	(. String value = currentToken().spelling();
-       Identifier id = new Identifier(value);
+	(. String idName = currentToken().spelling();
+       Identifier id = new Identifier(idName);
 	   result = semantic.semanticValue(scope, id);
 	.)
 ["." identifier
-	(. String value2 = currentToken().spelling();
-       Identifier qualified = new Identifier(value2);
-	   result = semantic.semanticValue(scope, qualified);
+	(. String qualifiedName = currentToken().spelling();
+       Identifier qualified = new Identifier(qualifiedName);
+	   result = semantic.semanticValue(scope, result.expectModuleRecord(err), qualified);
 	.)
 ].
 /*----------------------------------------------------------*/

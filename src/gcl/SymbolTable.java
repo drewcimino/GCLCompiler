@@ -16,6 +16,7 @@ public class SymbolTable implements Iterable<SymbolTable.Entry>{
 	private final HashMap<Identifier, Entry> storage = new HashMap<Identifier, Entry>(hashsize);
 	private SymbolTable next = null;
 	private static SymbolTable globalScope = null;
+	private static ModuleRecord currentModule = null;
 	//Note that the only purpose of globalScope is to permit the $s+ pragma to work
 	//It has no real function in the compiler otherwise.
 	private static boolean publicScope = true; // Are new defs public or private? Documentation only.
@@ -86,6 +87,34 @@ public class SymbolTable implements Iterable<SymbolTable.Entry>{
 		boolean done = false;
 		while (!done) {
 			if (here.containsKey(name)) {
+				result = here.get(name);
+				return result;
+			} else {
+				CompilerOptions.message("Not yet found: " + name); // info only, not necessarily an error
+			}
+			if (current.next == null){
+				done = true;
+			}
+			else {
+				current = current.next;
+				here = current.storage;
+			}
+		}
+		return result;
+	}
+	
+	/** Lookup an identifier in this SymbolTable and the ones chained to it
+		@param module the module which has access to name
+		@param name some identifier to be looked up
+	    @return the associated symbol table entry or null
+	 */
+	public Entry lookupIdentifier(final ModuleRecord module, final Identifier name) { // Checks initializations also
+		Entry result = NULL_ENTRY;
+		HashMap<Identifier, Entry> here = storage;
+		SymbolTable current = this;
+		boolean done = false;
+		while (!done) {
+			if (here.containsKey(name) && here.get(name).module() == module) {
 				result = here.get(name);
 				return result;
 			} else {
@@ -172,11 +201,20 @@ public class SymbolTable implements Iterable<SymbolTable.Entry>{
 		CompilerOptions.showMessages = messages;
 		initializeSymbolTable();
 	}
+	
+	public static ModuleRecord currentModule(){
+		return currentModule;
+	}
+	
+	public static void setCurrentModule(ModuleRecord currentModule){
+		SymbolTable.currentModule = currentModule;
+	}
 
 	// -------------- Symbol Table Entries ----- inner -------
 
 	static class Entry {
 		public Entry(final String entryKind, final Identifier itsName, final SemanticItem item) {
+			module = currentModule();
 			identifierValue = itsName;
 			isPublic = publicScope;
 			this.entryKind = entryKind;
@@ -202,7 +240,12 @@ public class SymbolTable implements Iterable<SymbolTable.Entry>{
 		public Identifier identifier() {
 			return identifierValue;
 		}
+		
+		public ModuleRecord module(){
+			return module;
+		}
 
+		private final ModuleRecord module;
 		private final Identifier identifierValue;
 		private final String entryKind; // Documentation only
 		private final boolean isPublic; // Documentation only

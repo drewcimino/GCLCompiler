@@ -50,6 +50,15 @@ abstract class SemanticItem {
 		err.semanticError(GCLError.EXPRESSION_REQUIRED);
 		return new ErrorExpression("$ Expression Required");
 	}
+	
+	/**
+	 * Soft Cast
+	 * @return "this" if it is a module record and an ErrorModuleRecord otherwise.
+	 */
+	public ModuleRecord expectModuleRecord(final GCLErrorStream err) {
+		err.semanticError(GCLError.MODULE_REQUIRED);
+		return new ErrorModuleRecord("$ Module Required");
+	}	
 
 	public int semanticLevel() {
 		return level;
@@ -746,6 +755,43 @@ class ParameterKind extends SemanticItem {
 	// more later
 }
 
+/** Used to carry information for modules */
+class ModuleRecord extends SemanticItem{
+	
+	private int label;
+	
+	/**
+	 * @param label The label number which will be generated in the middle of this module.
+	 */
+	public ModuleRecord(int label){
+		this.label = label;
+	}
+	
+	public ModuleRecord expectModuleRecord(GCLErrorStream err){
+		return this;
+	}
+	
+	public int label(){
+		return label;
+	}
+}
+
+/** Used to represent errors where modules are expected. Immutable. */
+class ErrorModuleRecord extends ModuleRecord{
+	
+	private final String message;
+
+	public ErrorModuleRecord(final String message) {
+		super(-1);
+		this.message = message;
+		CompilerOptions.message(message);
+	}
+
+	public String toString() {
+		return message;
+	}
+}
+
 /** Used to carry information for guarded commands such as if and do */
 class GCRecord extends SemanticItem { // For guarded command statements if and do.
 	private final int outLabel;
@@ -1276,6 +1322,8 @@ abstract class GCLError {
 			"ERROR -> Range type required. ");
 	static final GCLError TUPLE_REQUIRED = new Value(17,
 			"ERROR -> Tuple type required. ");
+	static final GCLError MODULE_REQUIRED = new Value(18,
+			"ERROR -> Module required. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(91,
@@ -1333,6 +1381,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	static final TypeDescriptor NO_TYPE = ErrorType.NO_TYPE;
 	private SemanticLevel currentLevel = new SemanticLevel();
 	private GCLErrorStream err = null;
+	private ModuleRecord currentModule = null;
 
 	SemanticActions(final Codegen codeGenerator, final GCLErrorStream err) {
 		this.codegen = codeGenerator;
@@ -1362,6 +1411,21 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 	} // end GCLErrorStream
 
+	/***************************************************************************
+	 * Declares a new module, registering it as the new current module.
+	 * 
+	 * @param scope This module's associated scope.
+	 * @return a record which contains...
+	 **************************************************************************/
+	public ModuleRecord declareModule(final SymbolTable scope, final Identifier id){
+		
+		ModuleRecord newModule = new ModuleRecord(codegen.getLabel());
+		//codegen.genJumpLabel(JMP, 'M', newModule.label());//TODO add after debugging.
+		SymbolTable.setCurrentModule(newModule);
+		scope.newEntry("module", id, newModule);
+		return newModule;
+	}
+	
 	/***************************************************************************
 	 * Auxiliary Determine if a symboltable entry can safely be
 	 * redefined at this point. Only one definition is legal in a given scope.
@@ -1560,6 +1624,25 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	SemanticItem semanticValue(final SymbolTable scope, final Identifier id) {
 		
 		SymbolTable.Entry symbol = scope.lookupIdentifier(id);
+		if (symbol == SymbolTable.NULL_ENTRY) {
+			err.semanticError(GCLError.NAME_NOT_DEFINED);
+			return new SemanticError("Identifier not found in symbol table.");
+		} else {
+			return symbol.semanticRecord();
+		}
+	}
+	
+	/***************************************************************************
+	 * Transform an identifier into the semantic item that it represents
+	 * 
+	 * @param scope the current scope
+	 * @param module the module which has access to ID
+	 * @param ID and identifier to be transformed
+	 * @return the semantic item that the identifier represents.
+	 **************************************************************************/
+	SemanticItem semanticValue(final SymbolTable scope, final ModuleRecord module, final Identifier id) {
+		
+		SymbolTable.Entry symbol = scope.lookupIdentifier(module, id);
 		if (symbol == SymbolTable.NULL_ENTRY) {
 			err.semanticError(GCLError.NAME_NOT_DEFINED);
 			return new SemanticError("Identifier not found in symbol table.");

@@ -136,6 +136,7 @@ public class Parser {
 		String result; 
 		Expect(4);
 		result = validIdentifier();
+		semantic.declareModule(scope, new Identifier(result)); 
 		definitionPart(scope);
 		if (la.kind == 5) {
 			Get();
@@ -310,16 +311,16 @@ public class Parser {
 	SemanticItem  qualifiedIdentifier(SymbolTable scope) {
 		SemanticItem  result;
 		Expect(1);
-		String value = currentToken().spelling();
-		  Identifier id = new Identifier(value);
+		String idName = currentToken().spelling();
+		  Identifier id = new Identifier(idName);
 		result = semantic.semanticValue(scope, id);
 		
 		if (la.kind == 6) {
 			Get();
 			Expect(1);
-			String value2 = currentToken().spelling();
-			  Identifier qualified = new Identifier(value2);
-			result = semantic.semanticValue(scope, qualified);
+			String qualifiedName = currentToken().spelling();
+			  Identifier qualified = new Identifier(qualifiedName);
+			result = semantic.semanticValue(scope, result.expectModuleRecord(err), qualified);
 			
 		}
 		return result;
