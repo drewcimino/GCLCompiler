@@ -103,7 +103,7 @@ public class SymbolTable implements Iterable<SymbolTable.Entry>{
 		return result;
 	}
 	
-	/** Lookup an identifier in this SymbolTable and the ones chained to it
+	/** Lookup an identifier in module's SymbolTable and the ones chained to it
 		@param module the module which has access to name
 		@param name some identifier to be looked up
 	    @return the associated symbol table entry or null
@@ -114,7 +114,9 @@ public class SymbolTable implements Iterable<SymbolTable.Entry>{
 		SymbolTable current = this;
 		boolean done = false;
 		while (!done) {
-			if (here.containsKey(name) && here.get(name).module() == module) {
+			if (here.containsKey(name) && (
+			   (here.get(name).module() == module && here.get(name).module() == currentModule()) || // all members accessible within the current module.
+			   (here.get(name).module() == module && here.get(name).isPublic))){ // otherwise, only public members are accessible.
 				result = here.get(name);
 				return result;
 			} else {
@@ -214,7 +216,7 @@ public class SymbolTable implements Iterable<SymbolTable.Entry>{
 
 	static class Entry {
 		public Entry(final String entryKind, final Identifier itsName, final SemanticItem item) {
-			module = currentModule();
+			module = currentModule;
 			identifierValue = itsName;
 			isPublic = publicScope;
 			this.entryKind = entryKind;

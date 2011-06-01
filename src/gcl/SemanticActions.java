@@ -58,7 +58,7 @@ abstract class SemanticItem {
 	public ModuleRecord expectModuleRecord(final GCLErrorStream err) {
 		err.semanticError(GCLError.MODULE_REQUIRED);
 		return new ErrorModuleRecord("$ Module Required");
-	}	
+	}
 
 	public int semanticLevel() {
 		return level;
@@ -89,6 +89,11 @@ class SemanticError extends SemanticItem implements GeneralError {
 	public TypeDescriptor expectTypeDescriptor(final GCLErrorStream err) {
 		// Don't complain on error records. The complaint previously occurred when this object was created.
 		return ErrorType.NO_TYPE;
+	}
+	
+	public ModuleRecord expectModuleRecord(final GCLErrorStream err) {
+		// Don't complain on error records. The complaint previously occurred when this object was created.
+		return new ErrorModuleRecord("$ Module Required");
 	}
 
 	public String toString() {
@@ -767,7 +772,7 @@ class ModuleRecord extends SemanticItem{
 		this.label = label;
 	}
 	
-	public ModuleRecord expectModuleRecord(GCLErrorStream err){
+	public ModuleRecord expectModuleRecord(final GCLErrorStream err){
 		return this;
 	}
 	
@@ -777,7 +782,7 @@ class ModuleRecord extends SemanticItem{
 }
 
 /** Used to represent errors where modules are expected. Immutable. */
-class ErrorModuleRecord extends ModuleRecord{
+class ErrorModuleRecord extends ModuleRecord implements GeneralError{
 	
 	private final String message;
 
@@ -1435,7 +1440,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	private boolean OKToRedefine(final SymbolTable.Entry entry) {
 		
-		if(entry == SymbolTable.NULL_ENTRY){
+		if(entry == SymbolTable.NULL_ENTRY || entry.module() != SymbolTable.currentModule()){
 			return true;
 		}
 		return false; // more later
@@ -1642,6 +1647,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	SemanticItem semanticValue(final SymbolTable scope, final ModuleRecord module, final Identifier id) {
 		
+		if(module instanceof GeneralError){
+			return new SemanticError("Identifier not found in symbol table.");
+		}
 		SymbolTable.Entry symbol = scope.lookupIdentifier(module, id);
 		if (symbol == SymbolTable.NULL_ENTRY) {
 			err.semanticError(GCLError.NAME_NOT_DEFINED);
