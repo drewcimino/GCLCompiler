@@ -1,7 +1,7 @@
 package gcl;
-//TODO test0 and test8 doesn't recognize tuple type compatibility.
+//TODO test8 doesn't recognize tuple type compatibility.
 //TODO Require VariableExpression in test 10 (3rd error)
-//TODO Deal with the runtime errors in 10_1 (there should only be 1 in the result file)
+//TODO Deal with the runtime errors in 10_1 (there should only be 1 in the result file).. likewise for 4_1
 import gcl.Codegen.ConstantLike;
 import gcl.Codegen.Location;
 import gcl.SemanticActions.GCLErrorStream;
@@ -893,7 +893,7 @@ abstract class TypeDescriptor extends SemanticItem implements Cloneable {
 	
 	/**
 	 * Soft Cast
-	 * @return "this" if it is a range type and a NO_TYPE otherwise.
+	 * @return "this" if it is a tuple type and a NO_TYPE otherwise.
 	 */
 	public TupleType expectTupleType(final GCLErrorStream err) {
 		err.semanticError(GCLError.TUPLE_REQUIRED);
@@ -1172,7 +1172,6 @@ class TypeList extends SemanticItem {
  * incrementally and locked at the end to make them immutable afterwards.
  */
 class TupleType extends TypeDescriptor { // mutable
-	// TODO must override isCompatible
 	
 	private final HashMap<Identifier, TupleField> fields = new HashMap<Identifier, TupleField>(4);
 	private final ArrayList<Identifier> names = new ArrayList<Identifier>(4);
@@ -1197,6 +1196,23 @@ class TupleType extends TypeDescriptor { // mutable
 			inset += t.size();
 			names.add(id);
 		}
+	}
+	
+	public boolean isCompatible(TypeDescriptor other){
+		return (other instanceof TupleType) &&
+			   (fieldCount() == ((TupleType)other).fieldCount()) &&
+			   (fieldsAreCompatible((TupleType)other));
+	}
+	
+	private boolean fieldsAreCompatible(TupleType other){
+		Iterator<TupleField> thisFields = fields.values().iterator();
+		Iterator<TupleField> otherFields = other.fields.values().iterator();
+		while(thisFields.hasNext()){
+			if(!thisFields.next().type.isCompatible(otherFields.next().type)){
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	public TupleType expectTupleType(final GCLErrorStream err){
@@ -1832,7 +1848,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		Codegen.Location expressionLocation = codegen.buildOperands(booleanExpression);
 		codegen.gen2Address(IS, reg, expressionLocation);
 		codegen.freeTemp(expressionLocation);
-		return new VariableExpression(INTEGER_TYPE, reg, DIRECT); // temporary
+		return new VariableExpression(BOOLEAN_TYPE, reg, DIRECT); // temporary
 	}
 
 	/***************************************************************************
