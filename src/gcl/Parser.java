@@ -376,11 +376,13 @@ public class Parser {
 		Expect(14);
 		type = typeSymbol(scope);
 		name = validIdentifier();
-		id = new Identifier(name); carrier.enter(type, id);
+		id = new Identifier(name);
+		carrier.enter(type, id);
+		
 		while (la.kind == 12) {
 			Get();
 			type = typeSymbol(scope);
-			Expect(1);
+			name = validIdentifier();
 			id = new Identifier(name);
 			carrier.enter(type, id);
 			

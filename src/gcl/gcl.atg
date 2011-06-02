@@ -155,15 +155,19 @@ tupleType<^TupleType result, SymbolTable scope>
 	.)
 =
 	(. TypeList carrier = new TypeList(); .)
-	"tuple" "[" typeSymbol<^type,scope> validIdentifier<^name> 
-	(.id = new Identifier(name); carrier.enter(type, id);.)
+	"tuple" "["
+	typeSymbol<^type,scope> validIdentifier<^name> 
+	(.
+		id = new Identifier(name);
+		carrier.enter(type, id);
+	.)
 	{
-		"," typeSymbol<^type,scope> identifier 
+		"," typeSymbol<^type,scope> validIdentifier<^name> 
 		(.
 			id = new Identifier(name);
 			carrier.enter(type, id);
 		.) 
-	} 
+	}
 	"]"
 	(. result = new TupleType(carrier); .).
 /*----------------------------------------------------------*/

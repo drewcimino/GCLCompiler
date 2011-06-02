@@ -1204,6 +1204,7 @@ class TupleType extends TypeDescriptor { // mutable
 			   (fieldsAreCompatible((TupleType)other));
 	}
 	
+	/** @return true if all field types are compatible between this and other. */
 	private boolean fieldsAreCompatible(TupleType other){
 		Iterator<TupleField> thisFields = fields.values().iterator();
 		Iterator<TupleField> otherFields = other.fields.values().iterator();

@@ -178,7 +178,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			fieldType = tupleType.getType(fieldName);
 			fieldInset = tupleType.getInset(fieldName);
 		}
-		catch(NoSuchElementException e){
+		catch(Exception e){
 			err.semanticError(GCLError.NAME_NOT_DEFINED);
 			return new ErrorExpression("$ Invalid tuple member identifier.");
 		}
