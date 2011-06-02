@@ -18,7 +18,7 @@ private
 begin
 	write testmodules.x;  { 1}
 	x := 20;  { correct reference to testmodules.x }
-	write y; { causes an error, the name is invisible}
+	{ write y; } { causes an error, the name is invisible}
 end.
 
 module nobody

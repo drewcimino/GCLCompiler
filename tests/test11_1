@@ -1,4 +1,4 @@
-$c+
+$c+ $o+
 module test11_1
 { test of arrays (1 dimension )}
 private

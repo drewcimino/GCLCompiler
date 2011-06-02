@@ -1,4 +1,4 @@
-$c+
+$c+ $o+
 module test11_4 { twoDimensions
 -- test of arrays (2 dimension )}
 private
