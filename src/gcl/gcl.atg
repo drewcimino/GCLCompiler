@@ -55,17 +55,19 @@ gcl
 module<SymbolTable scope> 
 = 
 	(. String result; .)
-	"module" validIdentifier<^result> (. semantic.declareModule(scope, new Identifier(result)); .)
-		definitionPart<scope>
-	[ "private" (. SymbolTable privateScope = scope.openScope(false); .)
-		block<privateScope>
-	] "." . 
+	"module" validIdentifier<^result> (. semantic.declareModule(scope, new Identifier(result)); .) definitionPart<scope>
+	[
+		"private" (. SymbolTable privateScope = scope.openScope(false); .) block<privateScope>
+	]
+	".". 
 /*----------------------------------------------------------*/
 block<SymbolTable scope>
 =
      definitionPart<scope> SYNC "begin"  statementPart<scope> "end".
 /*----------------------------------------------------------*/
-definitionPart<SymbolTable scope>   =    {SYNC definition<scope> WEAK ";" }.
+definitionPart<SymbolTable scope>
+=
+	{SYNC definition<scope> WEAK ";" }.
 /*----------------------------------------------------------*/
 statementPart<SymbolTable scope> 
 = 
@@ -78,29 +80,43 @@ definition<SymbolTable scope>
 	typeDefinition<scope>.
 /*----------------------------------------------------------*/
 constantDefinition<SymbolTable scope>
-	(. String result; Identifier id; Expression exp; .)
+	(.
+		String result;
+		Identifier id;
+		Expression exp;
+	.)
 =
 	"constant" validIdentifier<^result>
 	(. id = new Identifier(result); .)
 	"=" expression<^exp,scope>
-	(. semantic.declareConstant(scope, id, exp.expectConstantExpression(err)); .) .
+	(. semantic.declareConstant(scope, id, exp.expectConstantExpression(err)); .).
 /*----------------------------------------------------------*/
 variableDefinition<SymbolTable scope, ParameterKind kindOfParam> 
-	(. String result; TypeDescriptor type; Identifier id; .)
+	(.
+		String result;
+		TypeDescriptor type;
+		Identifier id;
+	.)
 =
 	type<^type, scope> validIdentifier<^result>
-		(. 	id = new Identifier(result);
-			semantic.declareVariable(scope, type, id, kindOfParam);
-		.)
-	{	"," validIdentifier<^result>
-		(. 	id = new Identifier(result);
+	(.
+		id = new Identifier(result);
+		semantic.declareVariable(scope, type, id, kindOfParam);
+	.)
+	{
+		"," validIdentifier<^result>
+		(.
+			id = new Identifier(result);
 			semantic.declareVariable(scope, type, id, kindOfParam);
 		.)
 	}.
 /*----------------------------------------------------------*/
 arrayType<^TypeDescriptor result, TypeDescriptor componentType, SymbolTable scope>
+	(.
+		SemanticItem subscriptType;
+		java.util.Stack<RangeType> subscripts = new java.util.Stack<RangeType>();
+	.)
 =
-	(. SemanticItem subscriptType; java.util.Stack<RangeType> subscripts = new java.util.Stack<RangeType>(); .)
 	"array" "[" qualifiedIdentifier<^subscriptType, scope> (. subscripts.push(subscriptType.expectTypeDescriptor(err).expectRangeType(err)); .) "]"
 		  { "[" qualifiedIdentifier<^subscriptType, scope> (. subscripts.push(subscriptType.expectTypeDescriptor(err).expectRangeType(err)); .) "]" }
 	(. result = semantic.declareArrayType(subscripts, componentType); .).
@@ -112,64 +128,97 @@ rangeType<^TypeDescriptor result, TypeDescriptor baseType, SymbolTable scope>
 	(. result = semantic.declareRangeType(lowerBound.expectConstantExpression(err), upperBound.expectConstantExpression(err), baseType); .).
 /*----------------------------------------------------------*/
 typeDefinition<SymbolTable scope>
-	(. TypeDescriptor type; String result; .)
+	(.
+		TypeDescriptor type;
+		String result;
+	.)
 =
 	"typedefinition" type<^type, scope> validIdentifier<^result>
 	(. semantic.declareTypeDefinition(scope, type, new Identifier(result)); .).
 /*----------------------------------------------------------*/
 type<^TypeDescriptor result, SymbolTable scope>	(. result = noType; .)
 =
-	typeSymbol<^result, scope> [ arrayType<^result, result, scope> | rangeType<^result, result, scope> ]  |  tupleType<^result, scope>.
+	typeSymbol<^result, scope> [ arrayType<^result, result, scope> | rangeType<^result, result, scope> ] |
+	tupleType<^result, scope>.
 /*----------------------------------------------------------*/
 typeSymbol<^TypeDescriptor result, SymbolTable scope> (. result = null; SemanticItem typeItem = null; .)
 =
-	"integer" (. result = integerType; .)
-	| "Boolean" (. result = booleanType; .)
-	| qualifiedIdentifier<^typeItem, scope> (. result = typeItem.expectTypeDescriptor(err); .) .
+	"integer" (. result = integerType; .) |
+	"Boolean" (. result = booleanType; .) |
+	qualifiedIdentifier<^typeItem, scope> (. result = typeItem.expectTypeDescriptor(err); .).
 /*----------------------------------------------------------*/
-tupleType<^TupleType result, SymbolTable scope>   (. TypeDescriptor type; Identifier id; String name; .)
+tupleType<^TupleType result, SymbolTable scope>
+	(.
+		TypeDescriptor type;
+		Identifier id;
+		String name;
+	.)
 =
 	(. TypeList carrier = new TypeList(); .)
 	"tuple" "[" typeSymbol<^type,scope> validIdentifier<^name> 
-		(.id = new Identifier(name); carrier.enter(type, id);.)
-		{  "," typeSymbol<^type,scope> identifier 
-		(.id = new Identifier(name); carrier.enter(type, id);.) 
-		} 
+	(.id = new Identifier(name); carrier.enter(type, id);.)
+	{
+		"," typeSymbol<^type,scope> identifier 
+		(.
+			id = new Identifier(name);
+			carrier.enter(type, id);
+		.) 
+	} 
 	"]"
-     (. result = new TupleType(carrier); .) .
+	(. result = new TupleType(carrier); .).
 /*----------------------------------------------------------*/
 statement<SymbolTable scope>
 =
-	emptyStatement | readStatement<scope>  | writeStatement<scope> 
-	| assignStatement<scope> | ifStatement<scope> | doStatement<scope>
-	| forStatement<scope>.
+	emptyStatement |
+	readStatement<scope> |
+	writeStatement<scope> |
+	assignStatement<scope> |
+	ifStatement<scope> |
+	doStatement<scope> |
+	forStatement<scope>.
 /*----------------------------------------------------------*/
-emptyStatement     = "skip".
-/*----------------------------------------------------------*/
-readStatement<SymbolTable scope>      (. Expression exp; .)
+emptyStatement
 =
-	"read" variableAccessEtc<^exp, scope>  (. semantic.readVariable(exp); .)
-		{ ","  variableAccessEtc<^exp, scope>  (. semantic.readVariable(exp); .) } .
+	"skip".
+/*----------------------------------------------------------*/
+readStatement<SymbolTable scope>
+	(. Expression exp; .)
+=
+	"read" variableAccessEtc<^exp, scope> (. semantic.readVariable(exp); .)
+	{
+		"," variableAccessEtc<^exp, scope> (. semantic.readVariable(exp); .)
+	}.
 /*----------------------------------------------------------*/
 writeStatement<SymbolTable scope> 
 =
-	"write" writeItem<scope> {"," writeItem<scope> }
-		(. semantic.genEol(); .).
+	"write" writeItem<scope>
+	{
+		"," writeItem<scope>
+	}
+	(. semantic.genEol(); .).
 /*----------------------------------------------------------*/
 writeItem<SymbolTable scope> (. Expression exp; .)
 =
-	expression<^exp, scope>  (. semantic.writeExpression(exp); .)		
+	expression<^exp, scope>
+	(. semantic.writeExpression(exp); .)
 	| gclString (. semantic.writeString(new StringConstant(currentToken().spelling())); .).
 /*----------------------------------------------------------*/
 assignStatement<SymbolTable scope>
-		(. AssignRecord expressions = new AssignRecord(); Expression exp; .)
+	(.
+		AssignRecord expressions = new AssignRecord();
+		Expression exp;
+	.)
 =
 	variableAccessEtc<^exp, scope> (. expressions.left(exp.expectVariableExpression(err)); .)
-		{ "," variableAccessEtc<^exp, scope> (. expressions.left(exp.expectVariableExpression(err)); .) }
-		":="
-		expression<^exp, scope> (. expressions.right(exp); .)
-		{ "," expression<^exp, scope> (. expressions.right(exp); .) }
-		(. semantic.parallelAssign(expressions); .).
+	{
+		"," variableAccessEtc<^exp, scope> (. expressions.left(exp.expectVariableExpression(err)); .)
+	}
+	":="
+	expression<^exp, scope> (. expressions.right(exp); .)
+	{
+		"," expression<^exp, scope> (. expressions.right(exp); .)
+	}
+	(. semantic.parallelAssign(expressions); .).
 /*----------------------------------------------------------*/
 doStatement<SymbolTable scope>  (. GCRecord doRecord; .)
 =
@@ -189,7 +238,10 @@ ifStatement<SymbolTable scope>  (. GCRecord ifRecord; .)
 /*----------------------------------------------------------*/
 guardedCommandList<SymbolTable scope, GCRecord ifRecord>
 =
-	guardedCommand<scope, ifRecord> { "[]" guardedCommand<scope, ifRecord> }.
+	guardedCommand<scope, ifRecord>
+	{
+		"[]" guardedCommand<scope, ifRecord>
+	}.
 /*----------------------------------------------------------*/
 guardedCommand<SymbolTable scope, GCRecord  ifRecord >  (.  Expression expr; .)
 =
@@ -197,117 +249,153 @@ guardedCommand<SymbolTable scope, GCRecord  ifRecord >  (.  Expression expr; .)
 	statementPart<scope>  (. semantic.elseIf(ifRecord); .).
 /*----------------------------------------------------------*/
 expression<^Expression left, SymbolTable scope>
-(. Expression right; .)
+	(. Expression right; .)
 =
-	andExpression<^left, scope> {"|" andExpression<^right, scope> (. left = semantic.orExpression(left, right); .)} .
+	andExpression<^left, scope>
+	{
+		"|" andExpression<^right, scope>
+		(. left = semantic.orExpression(left, right); .)
+	}.
 /*----------------------------------------------------------*/
 andExpression<^Expression left, SymbolTable scope>
-(. Expression right; .)
+	(. Expression right; .)
 =
-	relationalExpr<^left, scope> {"&" relationalExpr<^right, scope> (. left = semantic.andExpression(left, right); .)} .
+	relationalExpr<^left, scope>
+	{
+		"&" relationalExpr<^right, scope>
+		(. left = semantic.andExpression(left, right); .)
+	}.
 /*----------------------------------------------------------*/
 relationalExpr<^Expression left, SymbolTable scope>
-	(. Expression right; RelationalOperator op; .)
+	(.
+		Expression right;
+		RelationalOperator op;
+	.)
 =
 	simpleExpr<^left, scope>
-		[ relationalOperator<^op> simpleExpr<^right, scope>
+	[
+		relationalOperator<^op> simpleExpr<^right, scope>
 		(. left = semantic.compareExpression(left, op, right); .)
-		].
+	].
 /*----------------------------------------------------------*/
 simpleExpr<^Expression left, SymbolTable scope>
-	(. Expression right; AddOperator op; left = null; .)
+	(.
+		Expression right;
+		AddOperator op;
+		left = null;
+	.)
 =
-	(	["+"]term<^ left, scope>
-		|  "-" term<^ left, scope>  
-					(. left = semantic.negateExpression(left); .)
-		|  "~" term <^ left, scope>
-					(. left = semantic.negateBooleanExpression(left); .)
-	)
-	{  	addOperator<^op>  term<^right, scope>
-			(. left = semantic.addExpression(left, op, right); .)
+	(["+"]term<^ left, scope> |
+	  "-" term<^ left, scope>
+	  (. left = semantic.negateExpression(left); .) |
+	  "~" term <^ left, scope>
+	  (. left = semantic.negateBooleanExpression(left); .))
+	{
+		addOperator<^op>
+		term<^right, scope>
+		(. left = semantic.addExpression(left, op, right); .)
 	}.
 /*----------------------------------------------------------*/
 term<^Expression left, SymbolTable scope>
-	(. Expression right; MultiplyOperator op; left = null; .)
+	(.
+		Expression right;
+		MultiplyOperator op;
+		left = null;
+	.)
 =
-	factor<^left, scope> { multiplyOperator<^op>  factor<^right, scope>
-	(. left = semantic.multiplyExpression(left, op, right); .) } .
-
+	factor<^left, scope>
+	{
+		multiplyOperator<^op>
+		factor<^right, scope>
+		(. left = semantic.multiplyExpression(left, op, right); .)
+	}.
 /*----------------------------------------------------------*/
 factor<^Expression result, SymbolTable scope>  (. result = null; .)
 =
-	   variableAccessEtc<^result, scope>
-	|numeral
-	  (. result = new ConstantExpression (integerType, Integer.parseInt(currentToken().spelling()));
-	  .)
-	|booleanConstant
-	  (. result = new ConstantExpression (booleanType, (Boolean.parseBoolean(currentToken().spelling())) ? 1 : 0);
-	  .)
-	| "(" expression<^result, scope> ")"
-	| (. Expression exp;
-		 ExpressionList tupleFields = new ExpressionList();
-	  .)
-		"[" expression<^exp, scope>
-			(. tupleFields.enter(exp); .)
-		 { "," expression<^exp, scope>
-		 	(. tupleFields.enter(exp); .)
-		 }
-		"]"  (. result = semantic.buildTuple(tupleFields); .).
+	variableAccessEtc<^result, scope> |
+	numeral	(. result = new ConstantExpression (integerType, Integer.parseInt(currentToken().spelling())); .) |
+	booleanConstant	(. result = new ConstantExpression (booleanType, (Boolean.parseBoolean(currentToken().spelling())) ? 1 : 0); .) |
+	"(" expression<^result, scope> ")" |
+	(.
+		Expression exp;
+		ExpressionList tupleFields = new ExpressionList();
+	.)
+	"[" expression<^exp, scope>
+	(. tupleFields.enter(exp); .)
+	{
+		"," expression<^exp, scope>
+		(. tupleFields.enter(exp); .)
+	}
+	"]"
+	(. result = semantic.buildTuple(tupleFields); .).
 /*----------------------------------------------------------*/
 relationalOperator<^RelationalOperator op>  (. op = null; .)
 =
-	"="  (. op = RelationalOperator.EQUAL; .)
-	| "#" (. op = RelationalOperator.NOT_EQUAL; .)
-	| ">" (. op = RelationalOperator.GREATER; .)
-	| ">=" (. op = RelationalOperator.GREATER_OR_EQUAL; .)
-	| "<" (. op = RelationalOperator.LESS; .)
-	| "<=" (. op = RelationalOperator.LESS_OR_EQUAL; .) .
-	
+	"="  (. op = RelationalOperator.EQUAL; .) |
+	"#" (. op = RelationalOperator.NOT_EQUAL; .) |
+	">" (. op = RelationalOperator.GREATER; .) |
+	">=" (. op = RelationalOperator.GREATER_OR_EQUAL; .) |
+	"<" (. op = RelationalOperator.LESS; .) |
+	"<=" (. op = RelationalOperator.LESS_OR_EQUAL; .).
 /*----------------------------------------------------------*/
 addOperator<^AddOperator op > (. op = null; .)
  =
- 	"+"  (. op = AddOperator.PLUS; .)
- 	| "-" (. op = AddOperator.MINUS; .).
+ 	"+"  (. op = AddOperator.PLUS; .) |
+ 	"-" (. op = AddOperator.MINUS; .).
 /*----------------------------------------------------------*/
 multiplyOperator<^MultiplyOperator op > 	(. op = null; .)
 =
-	"*"   (. op = MultiplyOperator.TIMES; .)
-	| "/"  (. op = MultiplyOperator.DIVIDE; .)
-	| "\\" (. op = MultiplyOperator.MODULO; .).
+	"*" (. op = MultiplyOperator.TIMES; .) |
+	"/" (. op = MultiplyOperator.DIVIDE; .) |
+	"\\" (. op = MultiplyOperator.MODULO; .).
 /*----------------------------------------------------------*/
 qualifiedIdentifier<^SemanticItem result, SymbolTable scope> 
 =
-identifier 
-	(. String idName = currentToken().spelling();
-       Identifier id = new Identifier(idName);
-	   result = semantic.semanticValue(scope, id);
+	identifier 
+	(.
+	  	String idName = currentToken().spelling();
+		Identifier id = new Identifier(idName);
+		result = semantic.semanticValue(scope, id);
 	.)
-["." identifier
-	(. String qualifiedName = currentToken().spelling();
-       Identifier qualified = new Identifier(qualifiedName);
-	   result = semantic.semanticValue(scope, result.expectModuleRecord(err), qualified);
-	.)
-].
+	[	
+		"." identifier
+		(.
+		  	String qualifiedName = currentToken().spelling();
+			Identifier qualified = new Identifier(qualifiedName);
+			result = semantic.semanticValue(scope, result.expectModuleRecord(err), qualified);
+		.)
+	].
 /*----------------------------------------------------------*/
 validIdentifier<^String result> 
 =
-identifier 
-	(. result = currentToken().spelling();
-	   semantic.checkIdentifierSpelling(result);
+	identifier 
+	(.	
+	  	result = currentToken().spelling();
+		semantic.checkIdentifierSpelling(result);
 	.).
 /*----------------------------------------------------------*/
-variableAccessEtc<^Expression result, SymbolTable scope>  
-    (. SemanticItem workValue; .)   
+variableAccessEtc<^Expression result, SymbolTable scope>
 =
-	qualifiedIdentifier<^workValue, scope> subsAndCompons<^result, workValue, scope>.
+	(. SemanticItem workValue; .)
+	qualifiedIdentifier<^workValue, scope>
+	subsAndCompons<^result, workValue, scope>.
 /*----------------------------------------------------------*/
 subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
 =
-	(. result = identifier.expectExpression(err); Expression subscript;.)
-	{  "[" expression<^subscript, scope> "]" (. result = semantic.subscript(result.expectVariableExpression(err), subscript); .)
-	 | "@" identifier (. String component = currentToken().spelling();
-	                     Identifier fieldName = new Identifier(component);
-	                     result = semantic.tupleComponent(result.expectVariableExpression(err), fieldName); .) }.
+	(.
+		result = identifier.expectExpression(err);
+		Expression subscript;
+	.)
+	{
+		"[" expression<^subscript, scope> "]"
+		(. result = semantic.subscript(result.expectVariableExpression(err), subscript); .) |
+		"@" identifier
+		(.
+			String component = currentToken().spelling();
+			Identifier fieldName = new Identifier(component);
+			result = semantic.tupleComponent(result.expectVariableExpression(err), fieldName);
+		.)
+	}.
 /*----------------------------------------------------------*/
 booleanConstant
 =

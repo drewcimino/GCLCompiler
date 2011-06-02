@@ -227,7 +227,10 @@ public class Parser {
 	}
 
 	void variableDefinition(SymbolTable scope, ParameterKind kindOfParam) {
-		String result; TypeDescriptor type; Identifier id; 
+		String result;
+		TypeDescriptor type;
+		Identifier id;
+		
 		type = type(scope);
 		result = validIdentifier();
 		id = new Identifier(result);
@@ -243,7 +246,10 @@ public class Parser {
 	}
 
 	void constantDefinition(SymbolTable scope) {
-		String result; Identifier id; Expression exp; 
+		String result;
+		Identifier id;
+		Expression exp;
+		
 		Expect(10);
 		result = validIdentifier();
 		id = new Identifier(result); 
@@ -253,7 +259,9 @@ public class Parser {
 	}
 
 	void typeDefinition(SymbolTable scope) {
-		TypeDescriptor type; String result; 
+		TypeDescriptor type;
+		String result;
+		
 		Expect(18);
 		type = type(scope);
 		result = validIdentifier();
@@ -292,7 +300,9 @@ public class Parser {
 
 	TypeDescriptor  arrayType(TypeDescriptor componentType, SymbolTable scope) {
 		TypeDescriptor  result;
-		SemanticItem subscriptType; java.util.Stack<RangeType> subscripts = new java.util.Stack<RangeType>(); 
+		SemanticItem subscriptType;
+		java.util.Stack<RangeType> subscripts = new java.util.Stack<RangeType>();
+		
 		Expect(13);
 		Expect(14);
 		subscriptType = qualifiedIdentifier(scope);
@@ -312,14 +322,14 @@ public class Parser {
 		SemanticItem  result;
 		Expect(1);
 		String idName = currentToken().spelling();
-		  Identifier id = new Identifier(idName);
+		Identifier id = new Identifier(idName);
 		result = semantic.semanticValue(scope, id);
 		
 		if (la.kind == 6) {
 			Get();
 			Expect(1);
 			String qualifiedName = currentToken().spelling();
-			  Identifier qualified = new Identifier(qualifiedName);
+			Identifier qualified = new Identifier(qualifiedName);
 			result = semantic.semanticValue(scope, result.expectModuleRecord(err), qualified);
 			
 		}
@@ -357,7 +367,10 @@ public class Parser {
 
 	TupleType  tupleType(SymbolTable scope) {
 		TupleType  result;
-		TypeDescriptor type; Identifier id; String name; 
+		TypeDescriptor type;
+		Identifier id;
+		String name;
+		
 		TypeList carrier = new TypeList(); 
 		Expect(21);
 		Expect(14);
@@ -368,7 +381,9 @@ public class Parser {
 			Get();
 			type = typeSymbol(scope);
 			Expect(1);
-			id = new Identifier(name); carrier.enter(type, id);
+			id = new Identifier(name);
+			carrier.enter(type, id);
+			
 		}
 		Expect(15);
 		result = new TupleType(carrier); 
@@ -402,7 +417,9 @@ public class Parser {
 	}
 
 	void assignStatement(SymbolTable scope) {
-		AssignRecord expressions = new AssignRecord(); Expression exp; 
+		AssignRecord expressions = new AssignRecord();
+		Expression exp;
+		
 		exp = variableAccessEtc(scope);
 		expressions.left(exp.expectVariableExpression(err)); 
 		while (la.kind == 12) {
@@ -499,7 +516,9 @@ public class Parser {
 
 	Expression  relationalExpr(SymbolTable scope) {
 		Expression  left;
-		Expression right; RelationalOperator op; 
+		Expression right;
+		RelationalOperator op;
+		
 		left = simpleExpr(scope);
 		if (StartOf(9)) {
 			op = relationalOperator();
@@ -511,7 +530,10 @@ public class Parser {
 
 	Expression  simpleExpr(SymbolTable scope) {
 		Expression  left;
-		Expression right; AddOperator op; left = null; 
+		Expression right;
+		AddOperator op;
+		left = null;
+		
 		if (StartOf(10)) {
 			if (la.kind == 36) {
 				Get();
@@ -575,7 +597,10 @@ public class Parser {
 
 	Expression  term(SymbolTable scope) {
 		Expression  left;
-		Expression right; MultiplyOperator op; left = null; 
+		Expression right;
+		MultiplyOperator op;
+		left = null;
+		
 		left = factor(scope);
 		while (la.kind == 46 || la.kind == 47 || la.kind == 48) {
 			op = multiplyOperator();
@@ -605,12 +630,10 @@ public class Parser {
 			result = variableAccessEtc(scope);
 		} else if (la.kind == 2) {
 			Get();
-			result = new ConstantExpression (integerType, Integer.parseInt(currentToken().spelling()));
-			
+			result = new ConstantExpression (integerType, Integer.parseInt(currentToken().spelling())); 
 		} else if (la.kind == 50 || la.kind == 51) {
 			booleanConstant();
-			result = new ConstantExpression (booleanType, (Boolean.parseBoolean(currentToken().spelling())) ? 1 : 0);
-			
+			result = new ConstantExpression (booleanType, (Boolean.parseBoolean(currentToken().spelling())) ? 1 : 0); 
 		} else if (la.kind == 39) {
 			Get();
 			result = expression(scope);
@@ -659,7 +682,9 @@ public class Parser {
 
 	Expression  subsAndCompons(SemanticItem identifier, SymbolTable scope) {
 		Expression  result;
-		result = identifier.expectExpression(err); Expression subscript;
+		result = identifier.expectExpression(err);
+		Expression subscript;
+		
 		while (la.kind == 14 || la.kind == 49) {
 			if (la.kind == 14) {
 				Get();
@@ -671,7 +696,8 @@ public class Parser {
 				Expect(1);
 				String component = currentToken().spelling();
 				Identifier fieldName = new Identifier(component);
-				result = semantic.tupleComponent(result.expectVariableExpression(err), fieldName); 
+				result = semantic.tupleComponent(result.expectVariableExpression(err), fieldName);
+				
 			}
 		}
 		return result;
