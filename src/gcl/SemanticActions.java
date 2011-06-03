@@ -2104,21 +2104,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		TupleType tupleType = new TupleType(types);
 		return new VariableExpression(tupleType, GLOBAL_LEVEL, address, DIRECT);
 	}
-
-	/***************************************************************************
-	 * Enter the identifier into the symbol table along with its constant expression.
-	 * 
-	 * @param scope SymbolTable into which this entry should be added.
-	 * @param id Identifier of this constant expression.
-	 * @param expression The defined constant expression.
-	 **************************************************************************/
-	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expression) {
-		
-		complainIfDefinedHere(scope, id);
-		codegen.buildOperands(expression);
-		SymbolTable.Entry constant = scope.newEntry("constant", id, expression);
-		CompilerOptions.message("Entering: " + constant);
-	}
 	
 	/***************************************************************************
 	 * Enter the identifier into the symbol table, marking it as a variable of
@@ -2143,6 +2128,42 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 		SymbolTable.Entry variable = scope.newEntry("variable", id, expr);
 		CompilerOptions.message("Entering: " + variable);
+	}
+
+	/***************************************************************************
+	 * Enter the identifier into the symbol table along with its constant expression.
+	 * 
+	 * @param scope SymbolTable into which this entry should be added.
+	 * @param id Identifier of this constant expression.
+	 * @param expression The defined constant expression.
+	 **************************************************************************/
+	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expression) {
+		
+		complainIfDefinedHere(scope, id);
+		codegen.buildOperands(expression);
+		SymbolTable.Entry constant = scope.newEntry("constant", id, expression);
+		CompilerOptions.message("Entering: " + constant);
+	}
+	
+	/***************************************************************************
+	 * Enter id into the symbol table, associating it with the given type.
+	 * 
+	 * @param scope the current symbol table
+	 * @param type TypeDescriptor to be entered with id.
+	 * @param id Identifier representing type in the symbol table.
+	 **************************************************************************/
+	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id){
+		
+		complainIfDefinedHere(scope, id);
+		scope.newEntry("type", id, type);
+		CompilerOptions.message("Entering: " + type);
+	}
+	
+	/***************************************************************************
+	 * 
+	 **************************************************************************/
+	void declareProcedure(){
+		
 	}
 
 	/***************************************************************************
@@ -2195,20 +2216,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return new RangeType(baseType, lowerBound.value(), upperBound.value(), lowerLocation);
 		}
 		return ErrorType.NO_TYPE;
-	}
-	
-	/***************************************************************************
-	 * Enter id into the symbol table, associating it with the given type.
-	 * 
-	 * @param scope the current symbol table
-	 * @param type TypeDescriptor to be entered with id.
-	 * @param id Identifier representing type in the symbol table.
-	 **************************************************************************/
-	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id){
-		
-		complainIfDefinedHere(scope, id);
-		scope.newEntry("type", id, type);
-		CompilerOptions.message("Entering: " + type);
 	}
 	
 	/***************************************************************************

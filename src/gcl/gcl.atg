@@ -77,7 +77,8 @@ definition<SymbolTable scope>
 =  
 	variableDefinition<scope, ParameterKind.NOT_PARAM> |
 	constantDefinition<scope> |
-	typeDefinition<scope>.
+	typeDefinition<scope> |
+	procedureDefinition<scope>.
 /*----------------------------------------------------------*/
 constantDefinition<SymbolTable scope>
 	(.
@@ -111,6 +112,20 @@ variableDefinition<SymbolTable scope, ParameterKind kindOfParam>
 		.)
 	}.
 /*----------------------------------------------------------*/
+typeDefinition<SymbolTable scope>
+	(.
+		TypeDescriptor type;
+		String result;
+	.)
+=
+	"typedefinition" type<^type, scope> validIdentifier<^result>
+	(. semantic.declareTypeDefinition(scope, type, new Identifier(result)); .).
+/*----------------------------------------------------------*/
+procedureDefinition<SymbolTable scope>
+=
+	(. SemanticItem procedure; SymbolTable privateScope = scope.openScope(false); .)
+	"procedure" qualifiedIdentifier<^procedure, scope> block<privateScope>.
+/*----------------------------------------------------------*/
 arrayType<^TypeDescriptor result, TypeDescriptor componentType, SymbolTable scope>
 	(.
 		SemanticItem subscriptType;
@@ -126,15 +141,6 @@ rangeType<^TypeDescriptor result, TypeDescriptor baseType, SymbolTable scope>
 	(. Expression lowerBound; Expression upperBound; .)
 	"range" "[" expression<^lowerBound, scope> ".." expression<^upperBound, scope> "]"
 	(. result = semantic.declareRangeType(lowerBound.expectConstantExpression(err), upperBound.expectConstantExpression(err), baseType); .).
-/*----------------------------------------------------------*/
-typeDefinition<SymbolTable scope>
-	(.
-		TypeDescriptor type;
-		String result;
-	.)
-=
-	"typedefinition" type<^type, scope> validIdentifier<^result>
-	(. semantic.declareTypeDefinition(scope, type, new Identifier(result)); .).
 /*----------------------------------------------------------*/
 type<^TypeDescriptor result, SymbolTable scope>	(. result = noType; .)
 =
