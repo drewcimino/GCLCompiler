@@ -123,8 +123,33 @@ typeDefinition<SymbolTable scope>
 /*----------------------------------------------------------*/
 procedureDefinition<SymbolTable scope>
 =
-	(. SemanticItem procedure; SymbolTable privateScope = scope.openScope(false); .)
-	"procedure" qualifiedIdentifier<^procedure, scope> block<privateScope>.
+	(.
+		TupleType tupleExpressionType;
+		SemanticItem procedure;
+	.)
+	"procedure"
+	identifier
+	(.
+	  	String tupleName = currentToken().spelling();
+		Identifier tupleId = new Identifier(tupleName);
+		tupleExpressionType = semantic.semanticValue(scope, tupleId)
+									  .expectExpression(err)
+									  .expectVariableExpression(err)
+									  .type()
+									  .expectTupleType(err);
+	.)
+	"@"
+	identifier
+	(.
+	  	String procedureName = currentToken().spelling();
+		Identifier procedureId = new Identifier(procedureName);
+		procedure = semantic.semanticValue(tupleExpressionType.methods(), procedureId);
+	.)	
+	block<procedure.scope()>.
+	
+	// block needs to have procedureScope, whose id is in the tupleScope
+	// probably need to access fields, but not here
+	// 
 /*----------------------------------------------------------*/
 arrayType<^TypeDescriptor result, TypeDescriptor componentType, SymbolTable scope>
 	(.

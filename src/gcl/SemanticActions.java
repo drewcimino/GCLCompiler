@@ -1198,6 +1198,10 @@ class TupleType extends TypeDescriptor { // mutable
 		}
 	}
 	
+	public SymbolTable methods(){
+		return methods;
+	}
+	
 	public boolean isCompatible(TypeDescriptor other){
 		return (other instanceof TupleType) &&
 			   (fieldCount() == ((TupleType)other).fieldCount()) &&
