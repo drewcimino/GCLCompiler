@@ -60,6 +60,15 @@ abstract class SemanticItem {
 		return new ErrorModuleRecord("$ Module Required");
 	}
 
+	/**
+	 * Soft Cast
+	 * @return "this" if it is a module record and an ErrorModuleRecord otherwise.
+	 */
+	public Procedure expectProcedure(final GCLErrorStream err) {
+		err.semanticError(GCLError.PROCEDURE_REQUIRED);
+		return new ErrorProcedureRecord("$ Procedure Required");
+	}
+	
 	public int semanticLevel() {
 		return level;
 	}
@@ -407,7 +416,10 @@ class StringConstant extends SemanticItem implements ConstantLike {
 	}
 	
 	private final String convertToSamString(String gclString){
-		return "\"" + gclString.substring(1, gclString.length()-1).replaceAll("\\\\", "\\").replaceAll(":", "::").replaceAll("\"", ":\"") + "\"";
+		return "\"" + gclString.substring(1, gclString.length()-1)
+							   .replaceAll("\\\\", "\\")
+							   .replaceAll(":", "::")
+							   .replaceAll("\"", ":\"") + "\"";
 	}
 }
 
@@ -757,7 +769,8 @@ class ParameterKind extends SemanticItem {
 	}
 
 	public static final ParameterKind NOT_PARAM = new ParameterKind();
-	// more later
+	public static final ParameterKind VALUE = new ParameterKind();
+	public static final ParameterKind REFERENCE = new ParameterKind();
 }
 
 /** Used to carry information for modules */
@@ -790,6 +803,50 @@ class ErrorModuleRecord extends ModuleRecord implements GeneralError{
 		super(-1);
 		this.message = message;
 		CompilerOptions.message(message);
+	}
+
+	public String toString() {
+		return message;
+	}
+}
+/** Used to carry information for procedures */
+class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
+	
+	private Procedure parent;
+	private SymbolTable scope;
+	
+	public Procedure(Procedure parent, SymbolTable scope, int semanticLevel){
+		super(semanticLevel);
+		this.parent = parent;
+		this.scope = scope;
+	}
+	
+	public Procedure expectProcedure(final GCLErrorStream err){
+		return this;
+	}
+	
+	public Procedure parent(){
+		return parent;
+	}
+	
+	public SymbolTable scope(){
+		return scope;
+	}
+}
+
+/** Used to represent errors where procedures are expected. Immutable. */
+class ErrorProcedureRecord extends Procedure implements GeneralError{
+	
+	private final String message;
+
+	public ErrorProcedureRecord(final String message) {
+		super(null, SymbolTable.unchained(), GLOBAL_LEVEL);
+		this.message = message;
+		CompilerOptions.message(message);
+	}
+	
+	public Procedure parent(){
+		return new ErrorProcedureRecord("$ ErrorProcedure does not have a parent procedure.");
 	}
 
 	public String toString() {
@@ -1113,6 +1170,8 @@ class TypeList extends SemanticItem {
 	
 	private final ArrayList<TypeDescriptor> elements = new ArrayList<TypeDescriptor>(2);
 	private final ArrayList<Identifier> names = new ArrayList<Identifier>(2);
+	private final ArrayList<Procedure> procedures = new ArrayList<Procedure>(2);
+	private final ArrayList<Identifier> procedureNames = new ArrayList<Identifier>(2);
 	private int size = 0; // sum of the sizes of the types
 	private static int next = 0;
 	
@@ -1137,6 +1196,15 @@ class TypeList extends SemanticItem {
 	public void enter(final TypeDescriptor aType) {
 		enter(aType, new Identifier("none_" + next));
 		next++; // unique "names" for anonymous fields.
+	}
+	
+	/**
+	 * Add a new procedure record to the list.
+	 * @param procedure A new procedure record.
+	 */
+	public void enter(final Procedure procedure, final Identifier procedureName) {
+		procedures.add(procedure);
+		procedureNames.add(procedureName);
 	}
 
 	/**
@@ -1165,6 +1233,29 @@ class TypeList extends SemanticItem {
 	public Iterator<Identifier> names() {
 		return names.iterator();
 	}
+	
+	/**
+	 * An enumeration service for the procedures in the list in order of insertion
+	 * 
+	 * @return an enumeration over the procedure records.
+	 */
+	public Iterator<Procedure> procedures() {
+		return procedures.iterator();
+	}
+	
+	/**
+	 * An enumeration service for the names of the procedures
+	 * 
+	 * @return an enumeration over the identifiers
+	 */
+	public Iterator<Identifier> procedureNames() {
+		return procedureNames.iterator();
+	}
+}
+
+class ProcedureList extends SemanticItem {
+	
+
 }
 
 /**
@@ -1178,8 +1269,7 @@ class TupleType extends TypeDescriptor { // mutable
 	private SymbolTable methods = null; // later
 
 	/**
-	 * Create a tuple type from a list of its component types. We will need to
-	 * add the "methods" to this later.
+	 * Create a tuple type from a list of its component types.
 	 * 
 	 * @param carrier the list of component types
 	 */
@@ -1188,6 +1278,8 @@ class TupleType extends TypeDescriptor { // mutable
 		methods = SymbolTable.unchained();
 		Iterator<TypeDescriptor> e = carrier.elements();
 		Iterator<Identifier> n = carrier.names();
+		Iterator<Procedure> p = carrier.procedures();
+		Iterator<Identifier> pn = carrier.procedureNames();
 		int inset = 0;
 		while (e.hasNext()) {
 			TypeDescriptor t = e.next();
@@ -1195,6 +1287,9 @@ class TupleType extends TypeDescriptor { // mutable
 			fields.put(id, new TupleField(inset, t));
 			inset += t.size();
 			names.add(id);
+		}
+		while (p.hasNext()) {
+			methods.newEntry("procedure", pn.next(), p.next());
 		}
 	}
 	
@@ -1350,6 +1445,8 @@ abstract class GCLError {
 			"ERROR -> Tuple type required. ");
 	static final GCLError MODULE_REQUIRED = new Value(18,
 			"ERROR -> Module required. ");
+	static final GCLError PROCEDURE_REQUIRED = new Value(19,
+			"ERROR -> Procedure required. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(91,
@@ -1407,7 +1504,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	static final TypeDescriptor NO_TYPE = ErrorType.NO_TYPE;
 	private SemanticLevel currentLevel = new SemanticLevel();
 	private GCLErrorStream err = null;
-	private ModuleRecord currentModule = null;
+	private Procedure currentProcedure = null;
 
 	SemanticActions(final Codegen codeGenerator, final GCLErrorStream err) {
 		this.codegen = codeGenerator;
@@ -2164,12 +2261,65 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
+	 * Declares a new procedure with its own scope, entering it into the carrier for its tuple.
 	 * 
+	 * @param procedureId identifier of the new procedure.
+	 * @param carrier TypeList used to build this procedure's tuple.
+	 * @param outerScope The scope where this procedure's tuple is defined.
+	 * @return The new scope of the procedure.
 	 **************************************************************************/
-	void declareProcedure(){
+	SymbolTable procedureDeclaration(final Identifier procedureId, TypeList carrier, final SymbolTable outerScope){
 		
+		currentLevel.increment();
+		currentProcedure = new Procedure(currentProcedure, outerScope.openScope(false), currentLevel().value());
+		carrier.enter(currentProcedure, procedureId);
+		return currentProcedure.scope();
 	}
-
+	
+	/***************************************************************************
+	 * Closes procedure declaration and returns to the previous scope.
+	 **************************************************************************/
+	void closeProcedureDeclaration(){
+		
+		currentLevel.decrement();
+		currentProcedure.scope().closeScope();
+		currentProcedure = currentProcedure.parent(); 
+	}
+	
+	/***************************************************************************
+	 * Opens the definition block for a procedure.
+	 * 
+	 * @param tupleId the id of the tuple who's procedure is being defined.
+	 * @param procedureId the id of the procedure which is being defined.
+	 * @param outerScope the scope in which the tuple is defined.
+	 **************************************************************************/
+	SymbolTable procedureDefinition(final Identifier tupleId, final Identifier procedureId, final SymbolTable outerScope){
+		
+		currentLevel.increment();
+		SymbolTable tupleScope = semanticValue(outerScope, tupleId)
+		 						.expectExpression(err)
+		 						.expectVariableExpression(err)
+		 						.type()
+		 						.expectTupleType(err)
+		 						.methods();
+		Procedure procedure = semanticValue(tupleScope, procedureId)
+							 .expectProcedure(err);
+		currentProcedure = procedure;
+		procedure.scope().restoreProcedureScope(procedure.scope());
+		return procedure.scope();
+	}
+	
+	/***************************************************************************
+	 * Closes the definition block for a procedure.
+	 **************************************************************************/
+	void closeProcedureDefinition(){
+		
+		// TODO unlink code.
+		currentLevel.decrement();
+		currentProcedure.scope().closeScope();
+		currentProcedure = currentProcedure.parent();
+	}
+	
 	/***************************************************************************
 	 * Declare Array Type.
 	 * 
@@ -2299,6 +2449,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return tupleExpression@fieldName
 	 **************************************************************************/
 	Expression tupleComponent(VariableExpression tupleExpression, Identifier fieldName){
+		
 		return codegen.extractTupleComponent(tupleExpression, fieldName);
 	}
 	
@@ -2310,6 +2461,15 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if(!Identifier.isValid(identifier)){
 	   		err.semanticError(GCLError.ILLEGAL_IDENTIFIER);
 	    }
+	}
+	
+	/***************************************************************************
+	 * Inserts a comment in the listing file.
+	 * TODO remove after debugging.
+	 **************************************************************************/
+	void insertComment(String message){
+		
+		codegen.genCodeComment(message);
 	}
 
 	/***************************************************************************
