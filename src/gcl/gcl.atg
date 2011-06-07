@@ -173,6 +173,7 @@ typeSymbol<^TypeDescriptor result, SymbolTable scope> (. result = null; Semantic
 /*----------------------------------------------------------*/
 tupleType<^TupleType result, SymbolTable scope>
 =
+(. semantic.insertComment("tupleType"); .)
 	(. TypeList carrier = new TypeList(); .)
 	"tuple" "["
 	(
@@ -180,10 +181,12 @@ tupleType<^TupleType result, SymbolTable scope>
 		fieldsAndProcedures<^carrier, carrier, scope>
 	)
 	"]"
-	(. result = new TupleType(carrier); .).
+	(. result = new TupleType(carrier); .)
+	(. semantic.insertComment(result.toString()); .).
 /*----------------------------------------------------------*/
 justProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 =
+(. semantic.insertComment("justProcs"); .)
 	procedureDeclaration<^carrier, carrier, scope>
 	{
 		","
@@ -193,6 +196,7 @@ justProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 /*----------------------------------------------------------*/
 fieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>// everything short circuits after this call. no additional fields are parsed.
 =
+(. semantic.insertComment("fieldsAndProcs"); .)
 	(.
 		TypeDescriptor fieldType;
 		String fieldName;
@@ -206,8 +210,10 @@ fieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>// eve
 /*----------------------------------------------------------*/
 moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 =
+(. semantic.insertComment("moreFieldsAndProcs"); .)
 	(. result = carrier; .)
 	[
+		","
 		(.
 			TypeDescriptor fieldType;
 			String fieldName;
@@ -223,6 +229,7 @@ moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 /*----------------------------------------------------------*/
 procedureDeclaration<^TypeList result, TypeList carrier, SymbolTable outerScope>
 =
+(. semantic.insertComment("procDec"); .)
 	(. String procedureName; .)
 	"procedure" validIdentifier<^procedureName>
 	(.
@@ -237,6 +244,7 @@ procedureDeclaration<^TypeList result, TypeList carrier, SymbolTable outerScope>
 /*----------------------------------------------------------*/
 parameterPart<SymbolTable procedureScope>
 =
+(. semantic.insertComment("paramPart"); .)
 	"("
 	[
 		parameterDefinition<procedureScope>
@@ -249,6 +257,7 @@ parameterPart<SymbolTable procedureScope>
 /*----------------------------------------------------------*/
 parameterDefinition<SymbolTable procedureScope>
 =
+(. semantic.insertComment("paramDef"); .)
 	"value" variableDefinition<procedureScope, ParameterKind.VALUE> |
 	"reference" variableDefinition<procedureScope, ParameterKind.REFERENCE>.
 /*----------------------------------------------------------*/

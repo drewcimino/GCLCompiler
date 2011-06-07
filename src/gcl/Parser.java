@@ -385,6 +385,7 @@ public class Parser {
 
 	TupleType  tupleType(SymbolTable scope) {
 		TupleType  result;
+		semantic.insertComment("tupleType"); 
 		TypeList carrier = new TypeList(); 
 		Expect(23);
 		Expect(17);
@@ -395,11 +396,13 @@ public class Parser {
 		} else SynErr(66);
 		Expect(18);
 		result = new TupleType(carrier); 
+		semantic.insertComment(result.toString()); 
 		return result;
 	}
 
 	TypeList  justProcedures(TypeList carrier, SymbolTable scope) {
 		TypeList  result;
+		semantic.insertComment("justProcs"); 
 		carrier = procedureDeclaration(carrier, scope);
 		while (la.kind == 12) {
 			Get();
@@ -411,6 +414,7 @@ public class Parser {
 
 	TypeList  fieldsAndProcedures(TypeList carrier, SymbolTable scope) {
 		TypeList  result;
+		semantic.insertComment("fieldsAndProcs"); 
 		TypeDescriptor fieldType;
 		String fieldName;
 		
@@ -425,6 +429,7 @@ public class Parser {
 
 	TypeList  procedureDeclaration(TypeList carrier, SymbolTable outerScope) {
 		TypeList  result;
+		semantic.insertComment("procDec"); 
 		String procedureName; 
 		Expect(14);
 		procedureName = validIdentifier();
@@ -440,9 +445,11 @@ public class Parser {
 
 	TypeList  moreFieldsAndProcedures(TypeList carrier, SymbolTable scope) {
 		TypeList  result;
+		semantic.insertComment("moreFieldsAndProcs"); 
 		result = carrier; 
-		if (StartOf(8)) {
-			if (la.kind == 1 || la.kind == 21 || la.kind == 22) {
+		if (la.kind == 12 || la.kind == 14) {
+			if (la.kind == 12) {
+				Get();
 				TypeDescriptor fieldType;
 				String fieldName;
 				
@@ -460,6 +467,7 @@ public class Parser {
 	}
 
 	void parameterPart(SymbolTable procedureScope) {
+		semantic.insertComment("paramPart"); 
 		Expect(24);
 		if (la.kind == 26 || la.kind == 27) {
 			parameterDefinition(procedureScope);
@@ -473,6 +481,7 @@ public class Parser {
 
 	void parameterDefinition(SymbolTable procedureScope) {
 		if (la.kind == 26) {
+			semantic.insertComment("paramDef"); 
 			Get();
 			variableDefinition(procedureScope, ParameterKind.VALUE);
 		} else if (la.kind == 27) {
@@ -567,7 +576,7 @@ public class Parser {
 
 	void writeItem(SymbolTable scope) {
 		Expression exp; 
-		if (StartOf(9)) {
+		if (StartOf(8)) {
 			exp = expression(scope);
 			semantic.writeExpression(exp); 
 		} else if (la.kind == 3) {
@@ -611,7 +620,7 @@ public class Parser {
 		RelationalOperator op;
 		
 		left = simpleExpr(scope);
-		if (StartOf(10)) {
+		if (StartOf(9)) {
 			op = relationalOperator();
 			right = simpleExpr(scope);
 			left = semantic.compareExpression(left, op, right); 
@@ -625,7 +634,7 @@ public class Parser {
 		AddOperator op;
 		left = null;
 		
-		if (StartOf(11)) {
+		if (StartOf(10)) {
 			if (la.kind == 42) {
 				Get();
 			}
@@ -814,7 +823,6 @@ public class Parser {
 		{T,T,x,x, T,x,x,T, T,x,T,x, x,T,T,x, x,x,x,x, x,T,T,T, x,x,x,x, T,T,T,x, T,T,T,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,x, T,x,T,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,T,x, x,x,x,x, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,x,x,x, x,x,x,x, x,T,T,x, x},
 		{x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,T,T, T,T,x,x, x,x,x,x, x},
 		{x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,x, x,x,x,x, x,x,x,x, x,T,T,x, x}
