@@ -128,7 +128,6 @@ procedureDefinition<SymbolTable scope>
 	(.
 	  	String tupleName = currentToken().spelling();
 		Identifier tupleId = new Identifier(tupleName);
-
 	.)
 	"@"
 	identifier
@@ -139,10 +138,6 @@ procedureDefinition<SymbolTable scope>
 	.)
 	block<procedureScope>
 	(. semantic.closeProcedureDefinition(); .).
-	
-	// block needs to have procedureScope, whose id is in the tupleScope
-	// probably need to access fields, but not here
-	// 
 /*----------------------------------------------------------*/
 arrayType<^TypeDescriptor result, TypeDescriptor componentType, SymbolTable scope>
 	(.
@@ -173,7 +168,6 @@ typeSymbol<^TypeDescriptor result, SymbolTable scope> (. result = null; Semantic
 /*----------------------------------------------------------*/
 tupleType<^TupleType result, SymbolTable scope>
 =
-(. semantic.insertComment("tupleType"); .)
 	(. TypeList carrier = new TypeList(); .)
 	"tuple" "["
 	(
@@ -186,7 +180,6 @@ tupleType<^TupleType result, SymbolTable scope>
 /*----------------------------------------------------------*/
 justProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 =
-(. semantic.insertComment("justProcs"); .)
 	procedureDeclaration<^carrier, carrier, scope>
 	{
 		","
@@ -194,9 +187,8 @@ justProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 	}
 	(. result = carrier; .).
 /*----------------------------------------------------------*/
-fieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>// everything short circuits after this call. no additional fields are parsed.
+fieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 =
-(. semantic.insertComment("fieldsAndProcs"); .)
 	(.
 		TypeDescriptor fieldType;
 		String fieldName;
@@ -210,7 +202,6 @@ fieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>// eve
 /*----------------------------------------------------------*/
 moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 =
-(. semantic.insertComment("moreFieldsAndProcs"); .)
 	(. result = carrier; .)
 	[
 		","
@@ -229,7 +220,6 @@ moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 /*----------------------------------------------------------*/
 procedureDeclaration<^TypeList result, TypeList carrier, SymbolTable outerScope>
 =
-(. semantic.insertComment("procDec"); .)
 	(. String procedureName; .)
 	"procedure" validIdentifier<^procedureName>
 	(.
@@ -244,7 +234,6 @@ procedureDeclaration<^TypeList result, TypeList carrier, SymbolTable outerScope>
 /*----------------------------------------------------------*/
 parameterPart<SymbolTable procedureScope>
 =
-(. semantic.insertComment("paramPart"); .)
 	"("
 	[
 		parameterDefinition<procedureScope>
@@ -257,7 +246,6 @@ parameterPart<SymbolTable procedureScope>
 /*----------------------------------------------------------*/
 parameterDefinition<SymbolTable procedureScope>
 =
-(. semantic.insertComment("paramDef"); .)
 	"value" variableDefinition<procedureScope, ParameterKind.VALUE> |
 	"reference" variableDefinition<procedureScope, ParameterKind.REFERENCE>.
 /*----------------------------------------------------------*/
@@ -266,7 +254,7 @@ statement<SymbolTable scope>
 	emptyStatement |
 	readStatement<scope> |
 	writeStatement<scope> |
-	assignStatement<scope> |
+	variableAccessStatement<scope> |
 	ifStatement<scope> |
 	doStatement<scope> |
 	forStatement<scope>.
@@ -296,13 +284,28 @@ writeItem<SymbolTable scope> (. Expression exp; .)
 	expression<^exp, scope> (. semantic.writeExpression(exp); .) |
 	gclString (. semantic.writeString(new StringConstant(currentToken().spelling())); .).
 /*----------------------------------------------------------*/
-assignStatement<SymbolTable scope>
+expressionList<^ExpressionList expressions, SymbolTable scope>
+=
 	(.
-		AssignRecord expressions = new AssignRecord();
+		expressions = new ExpressionList();
 		Expression exp;
 	.)
+	expression<^exp, scope> (. expressions.enter(exp); .)
+	{
+		"," expression<^exp, scope> (. expressions.enter(exp); .)
+	}.
+/*----------------------------------------------------------*/
+variableAccessStatement<SymbolTable scope>
 =
-	variableAccessEtc<^exp, scope> (. expressions.left(exp.expectVariableExpression(err)); .)
+	(. Expression exp; .)
+	variableAccessEtc<^exp, scope> (assignStatement<exp, scope> | callStatement<exp, scope>).
+/*----------------------------------------------------------*/
+assignStatement<Expression exp, SymbolTable scope>
+=
+	(.
+		AssignRecord expressions = new AssignRecord();
+		expressions.left(exp.expectVariableExpression(err));
+	.)
 	{
 		"," variableAccessEtc<^exp, scope> (. expressions.left(exp.expectVariableExpression(err)); .)
 	}
@@ -312,6 +315,28 @@ assignStatement<SymbolTable scope>
 		"," expression<^exp, scope> (. expressions.right(exp); .)
 	}
 	(. semantic.parallelAssign(expressions); .).
+/*----------------------------------------------------------*/
+callStatement<Expression tupleExpression, SymbolTable scope>
+=
+	(.
+		TupleType tuple;
+		Identifier procedureId;
+		Procedure procedure;
+		ExpressionList arguments;
+	.)
+	"!" identifier
+	(.
+		tuple = tupleExpression.type().expectTupleType(err);
+		procedureId = new Identifier(currentToken().spelling());
+		procedure = semantic.semanticValue(tuple.methods(), procedureId).expectProcedure(err);
+	.)
+	argumentList<^arguments, scope>
+	(. semantic.callProcedure(procedure, arguments); .).
+/*----------------------------------------------------------*/  
+argumentList<^ExpressionList arguments, SymbolTable scope>
+=
+	(. arguments = new ExpressionList(); .)
+	"(" [ expressionList<^arguments, scope> ] ")".
 /*----------------------------------------------------------*/
 doStatement<SymbolTable scope>  (. GCRecord doRecord; .)
 =
@@ -409,17 +434,8 @@ factor<^Expression result, SymbolTable scope>  (. result = null; .)
 	numeral	(. result = new ConstantExpression (integerType, Integer.parseInt(currentToken().spelling())); .) |
 	booleanConstant	(. result = new ConstantExpression (booleanType, (Boolean.parseBoolean(currentToken().spelling())) ? 1 : 0); .) |
 	"(" expression<^result, scope> ")" |
-	(.
-		Expression exp;
-		ExpressionList tupleFields = new ExpressionList();
-	.)
-	"[" expression<^exp, scope>
-	(. tupleFields.enter(exp); .)
-	{
-		"," expression<^exp, scope>
-		(. tupleFields.enter(exp); .)
-	}
-	"]"
+	(. ExpressionList tupleFields; .)
+	"[" expressionList<^tupleFields, scope> "]"
 	(. result = semantic.buildTuple(tupleFields); .).
 /*----------------------------------------------------------*/
 relationalOperator<^RelationalOperator op>  (. op = null; .)

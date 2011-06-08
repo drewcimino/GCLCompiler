@@ -2454,6 +2454,16 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
+	 * Calls a procedure with a list arguments.
+	 * 
+	 * @param procedure procedure to be called.
+	 * @param arguments
+	 **************************************************************************/
+	void callProcedure(Procedure procedure, ExpressionList arguments){
+		
+	}
+	
+	/***************************************************************************
 	 * Complain if invalid spelling.
 	 **************************************************************************/
 	void checkIdentifierSpelling(final String identifier){
