@@ -954,115 +954,129 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	//------------------------------- Honors Code ------------------------------------
+	/**
+	 * Assigns the low bits of value to bits on the range [fromBit, toBit].
+	 * 
+	 * @param bits BitSet to modify.
+	 * @param fromBit index of the starting bit to be modified.
+	 * @param toBit index of the ending bit to be modified.
+	 * @param value integer value to be assigned to that range.
+	 */
+	private static void setBits(BitSet bits, int fromBit, int toBit, int value){ 
+		// low bits of value to low bits of from--to. value >= 0
+		for(int i = fromBit; i <= toBit; ++i){
+			if(value % 2 == 1){
+				bits.set(i);
+			}
+			else {
+				bits.clear(i); // in case bits wasn't "zeros" to start
+			}
+			value = value >> 1;			
+		}
+	}
+
+	/**
+	 * @param code short integer value.
+	 * @return 16 bit BitSet representation.
+	 */
+	private static BitSet toBitSet(short code){
+		BitSet result = new  BitSet(16);
+		for(int i = 0; i < 16; ++i){
+			if(Math.abs(code % 2) == 1){
+				result.set(i);
+			}
+			code = (short)(code >> 1);
+		}
+		return result;
+	}
+
+	/**
+	 * @param set bit set whose string representation you want.
+	 * @return String representation of a bit set.
+	 */
+	private static String bitString(BitSet set){ // 16 bit sets only
+		String result = "";
+		for(int i = 15; i >=0; --i){
+			if(set.get(i)){
+				result += "1";
+			}
+			else{
+				result += "0";
+			}
+		}
+		return result;
+	}
+	
+	
+	/**
+	 * @param set bit set whose short integer representation you want.
+	 * @return short integer representation of a bit set.
+	 */
+	private static short fromBitSet(BitSet set){
+		String value = bitString(set);
+		return (short)Integer.parseInt(value, 2); // decode in base 2
+	}
+	
 	/** Instruction in sam or macc. */
-	static abstract class Instruction {
-		
-		protected String samCode;
-		protected BitSet maccCode;
-		protected int maccSize;
+	interface Instruction {
 		
 		/**
 		 * @return Returns the assembly code as a String.
 		 */
-		public String samCode(){
-			return samCode;
-		}
+		public abstract String samCode();
 		
 		/**
 		 * @return Returns the macc code as a BitSet.
 		 */
-		public BitSet maccCode(){
-			return maccCode;
-		}
+		public abstract BitSet maccCode();
 		
 		/**
 		 * @return Returns the size, in words (2 bytes), of the instruction.
 		 */
-		public int maccSize(){
-			return maccSize;
-		}
-		
-		protected static void setBits( BitSet bits, int fromBit, int toBit, int value){ 
-			
-			// low bits of value to low bits of from--to. value >= 0
-			for(int i = fromBit; i <= toBit; ++i){
-				if(value % 2 == 1){
-					bits.set(i);
-				}
-				else {
-					bits.clear(i); // in case bits wasn't "zeros" to start
-				}
-				value = value >> 1;			
-			}
-		}
-
-		/**
-		 * @param code short integer value.
-		 * @return BitSet representation of code.
-		 */
-		protected static BitSet toBitSet(short code){ // 16 bit sets only
-			
-			BitSet result = new  BitSet(16);
-			for(int i = 0; i < 16; ++i){
-				if(Math.abs(code % 2) == 1){
-					result.set(i);
-				}
-				code = (short)(code >> 1);
-			}
-			return result;
-		}
-
-		/**
-		 * @param set
-		 * @return
-		 */
-		protected static String bitString( BitSet set){ // 16 bit sets only
-			
-			String result = "";
-			for(int i = 15; i >=0; --i){
-				if(set.get(i)){
-					result += "1";
-				}
-				else{
-					result += "0";
-				}
-			}
-			return result;
-		}
-		
-		
-		protected static short fromBitSet(BitSet set){
-			
-			String value = bitString(set);
-			return (short)Integer.parseInt(value, 2); // decode in base 2
-		}
+		public abstract int maccSize();
 	}
 	
 	/** Comment instruction. Has no output in macc. */
-	class Comment extends Instruction{
+	class Comment implements Instruction{
+		
+		private String message;
 		
 		public Comment(String message){
-			samCode = "% " + message;
-			maccCode = new BitSet(0);
-			maccSize = 0;
+			this.message = message;
 		}
+
+		@Override
+		public BitSet maccCode() {
+			return new BitSet(0);
+		}
+
+		@Override
+		public int maccSize() {
+			return 0;
+		}
+
+		@Override
+		public String samCode() {
+			return ("% " + message);
+		}
+		
+		
 	}
 	
 	/** Jump instruction. Must define offset in a second pass. */
-	class Jump extends Instruction{
+	class Jump implements Instruction{
 		
+		private BitSet maccCode;
 		private String label;
 		private SamOp opcode;
 		
 		public Jump(SamOp opcode, String label){
 			this.opcode = opcode;
 			this.label = label;
-			maccSize = 2;
-			samCode = opcode.samCodeString() + label;
 		}
 		
 		/**
-		 * Produces the macc code once the offset of the label is known.
+		 * instantiates the macc code once the offset of the label is known.
 		 */
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
@@ -1072,56 +1086,149 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			setBits(maccCode, 0, 15, offset);
 		}
 		
+		/**
+		 * @return String name of the label to which this instruction jumps.
+		 */
 		public String label(){
 			return label;
+		}
+
+		/**
+		 * Will return null if defineOffset has not yet been called.
+		 */
+		@Override
+		public BitSet maccCode() {
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + label);
 		}
 	}
 	
 	/** Write instruction. */
-	class Write extends Instruction{
+	class Write implements Instruction{
 		
-		public Write(SamOp opcode, int register, int offset){
+		public Write(final SamOp opcode, final int base, final int displacement){
 			
+		}
+
+		@Override
+		public BitSet maccCode() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public int maccSize() {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public String samCode() {
+			// TODO Auto-generated method stub
+			return null;
 		}
 	}
 	
 	/** Skip instruction. Allocates memory. */
-	class Skip extends Instruction{
+	class Skip implements Instruction{
+		
+		private SamOp opcode;
+		private int allocatedSize;
 		
 		/**
 		 * @param allocatedSize in 2 word intervals.
 		 */
 		public Skip(final SamOp opcode, final int allocatedSize){
-			samCode = opcode.samCodeString() + allocatedSize;
-			maccCode = new BitSet(allocatedSize * 32);
-			maccSize = allocatedSize * 2;
+			this.opcode = opcode;
+			this.allocatedSize = allocatedSize;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			return new BitSet(allocatedSize * 32);
+		}
+
+		@Override
+		public int maccSize() {
+			return (allocatedSize * 2);
+		}
+
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + allocatedSize);
 		}
 	}
 	
 	/** Directive instruction. */
-	class Directive extends Instruction{
+	class Directive implements Instruction{
 		
-		public Directive(SamOp opcode, String directive){
-			samCode = opcode.samCodeString() + directive;
-			maccCode = new BitSet(16);
+		private SamOp opcode;
+		private String directive;
+		
+		public Directive(final SamOp opcode, final String directive){
+			this.opcode = opcode;
+			this.directive = directive;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			// TODO Implement Properly.
+			BitSet maccCode = new BitSet(16);
 			setBits(maccCode, 11, 15, opcode.opCodeValue());
 			setBits(maccCode, 5, 8, opcode.specifier());
-			//setBits(maccCode, )
-			maccSize = 2;
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + directive);
 		}
 	}
 	
 	/** Instruction with zero addresses. */
-	class ZeroAddress extends Instruction{
+	class ZeroAddress implements Instruction{
+		
+		private SamOp opcode;
 		
 		public ZeroAddress(final SamOp opcode){
-			samCode = opcode.samCodeString();
-			//maccSize = 2;
+			this.opcode = opcode; 
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(16);
+			setBits(maccCode, 11, 15, opcode.opCodeValue());
+			setBits(maccCode, 7, 10, opcode.specifier());
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString();
 		}
 	}
 	
 	/** Instruction with one address. */
-	class OneAddress extends Instruction{
+	class OneAddress implements Instruction{
 		
 		private SamOp opcode;
 		private Mode mode;
@@ -1133,17 +1240,27 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			this.mode = mode;
 			this.base = base;
 			this.displacement = displacement;
-			maccSize = mode.bytesRequired();
 		}
 		
 		@Override
 		public String samCode(){
 			return (opcode.samCodeString() + mode.address(base, displacement));
 		}
+
+		@Override
+		public BitSet maccCode() {
+			// TODO Implement Properly.
+			return null;
+		}
+
+		@Override
+		public int maccSize() {
+			return mode.bytesRequired();
+		}
 	}
 	
 	/** Instruction with two addresses. */
-	class TwoAddress extends Instruction{
+	class TwoAddress implements Instruction{
 		
 		private SamOp opcode;
 		private int reg;
@@ -1158,14 +1275,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			this.mode = mode;
 			this.base = base;
 			this.displacement = displacement;
-			maccSize = mode.bytesRequired();
 		}
 		
 		public TwoAddress(final SamOp opcode, final int reg, final String dmemLocation){
 			this.opcode = opcode;
 			this.reg = reg;
 			this.dmemLocation = dmemLocation;
-			maccSize = 2; //TODO implement 2 address no mode size.
 		}
 		
 		@Override
@@ -1181,6 +1296,20 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			    return (opcode.samCodeString() + 'R' + reg + ", " + mode.address(base, displacement));
 			}
 			return (opcode.samCodeString() + 'R' + reg + ", " + dmemLocation);
+		}
+
+		@Override
+		public BitSet maccCode() {
+			// TODO Implement Properly.
+			return null;
+		}
+
+		@Override
+		public int maccSize() {
+			if(mode != null){
+				return mode.bytesRequired();
+			}
+			return 2;
 		}
 	}
 }
