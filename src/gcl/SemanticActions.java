@@ -1467,6 +1467,8 @@ abstract class GCLError {
 			"COMPILER ERROR -> array[constant subscript] - Case 4. ");
 	static final GCLError ILLEGAL_TUPLE_ACCESS = new Value(98,
 			"COMPILER ERROR -> extractTupleComponent - Case 4. ");
+	static final GCLError LABEL_UNDEFINED = new Value(99,
+			"COMPILER ERROR -> label undefined: ");
 
 	// More of each kind of error as you go along building the language.
 

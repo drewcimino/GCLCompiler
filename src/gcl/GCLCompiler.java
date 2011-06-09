@@ -113,9 +113,9 @@ public class GCLCompiler {
 			if (err.count > 0){
 				codegen.gen0Address(Mnemonic.HALT);
 			}
-//temp			codegen.writeInstructionList();
+			codegen.writeInstructionList();
 			codegen.closeCodefile();
-//temp			codegen.closeObjfile();
+			codegen.closeObjfile();
 			out.close();
 			/*
 			 * try { // uncomment this if you want to run from a clickable batch

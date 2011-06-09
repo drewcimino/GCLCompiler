@@ -3,9 +3,7 @@ package gcl;
 import java.io.PrintWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.NoSuchElementException;
-import java.util.Stack;
-import java.util.Iterator;
+import java.util.*;
 
 // --------------------- Codegen ---------------------------------
 public class Codegen implements Mnemonic, CodegenConstants {
@@ -18,6 +16,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	private SemanticActions.SemanticLevel currentLevel;
 	private RegisterSet registers = new RegisterSet();
 	private Stack<RegisterSet> savedRegisters = new Stack<RegisterSet>();
+	// Honors Code
+	private PrintWriter objfile;
+	private Collection<Instruction> instructionList = new ArrayList<Instruction>(); // Collection of instructions
+	private Hashtable<String, Integer> definedLabels = new Hashtable<String, Integer>(); // Label definitions String name -> int instructionIndex
+	private Set<String> undefinedLabels = new HashSet<String>(); // Labels referenced but not yet defined.
 
 	Codegen(final SemanticActions.GCLErrorStream err) {
 		this.err = err;
@@ -30,6 +33,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 	public void closeCodefile() {
 		codefile.close();
+	}
+	
+	public void closeObjfile() {
+		objfile.close();
 	}
 
 	/**
@@ -131,6 +138,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		Mode mode = DREG;
 		int base = -1, displacement = 0;
 		VariableExpression variable = (VariableExpression) semanticItem;
+			// ^Safe cast, other instances of Expressions factored out above
 		int itsLevel = variable.semanticLevel();
 		boolean isDirect = variable.isDirect();
 		if (itsLevel == CPU_LEVEL) {
@@ -141,25 +149,15 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			mode = isDirect ? INDXD : IINDXD;
 			base = VARIABLE_BASE;
 			displacement = variable.offset();
-		} else if (itsLevel == STACK_LEVEL) // This may be wrong. JB.
-		{
-			base = variable.offset();
+		} else if (itsLevel == STACK_LEVEL) { // This may be wrong. JB.
 			mode = IREG;
+			base = variable.offset();
 			displacement = UNUSED;
-		} else // its level > 1;
-		{
+		} else { // its level > 1;
 			int currentlevel = currentLevel.value();
 			// more later for function/procedure blocks
 		}
 		return new Location(mode, base, displacement);
-	}
-	
-	/**
-	 * @return A new location with an inset added to the displacement of the array location.
-	 */
-	public Location addInset(Location arrayLocation, int inset){
-		//genCodeComment(arrayLocation.mode.toString() + "+" + (arrayLocation.displacement + inset) + "(" + arrayLocation.displacement + ")");
-		return new Location(arrayLocation.mode, arrayLocation.base, arrayLocation.displacement + inset);
 	}
 	
 	/**
@@ -315,11 +313,55 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void flushcode() {/* Nothing in this version */
 	}
+	
+	/**
+	 * Replaces labels with offsets and writes the codefile and objfile.
+	 */
+	public void writeInstructionList(){
+		defineLabelOffsets();
+		for(Instruction instruction : instructionList){
+			codefile.println(instruction.samCode());
+			//objfile.println(fromBitSet(instruction.maccCode())); TODO remove this comment when testing obj output.
+		}
+	}
 
-	// This actually writes the codefile and optionally to the listing.
-	private void writeFiles(final String what) {
-		codefile.println(what);
-		CompilerOptions.listCode("$   " + what);
+	/**
+	 * Finds the memory offsets of labels
+	 */
+	private void defineLabelOffsets(){
+		Integer instructionOffset = 0;
+		Integer offset = null;
+		// first pass: record label offsets.
+		for(Instruction instruction : instructionList){
+			if(instruction instanceof Label){
+				Label labelInstruction = (Label)instruction;
+				undefinedLabels.remove(labelInstruction.name());
+				definedLabels.put(labelInstruction.name(), instructionOffset);
+			}
+			instructionOffset += instruction.maccSize();
+		}
+		// second pass: define jump offsets.
+		for(Instruction instruction : instructionList){ // TODO can be implemented as part of the write loop in writeInstructionList.
+			if(instruction instanceof Jump){
+				Jump jumpInstruction = (Jump)instruction;
+				offset = definedLabels.get(jumpInstruction.label());
+				if(offset == null){
+					err.semanticError(GCLError.LABEL_UNDEFINED, jumpInstruction.label());
+				}
+				else{
+					jumpInstruction.defineOffset(offset);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * This adds the instruction to the list and optionally to the listing.
+	 * @param instruction sam/macc instruction.
+	 */
+	private void writeFiles(final Instruction instruction) {
+		instructionList.add(instruction);
+		CompilerOptions.listCode("$   " + instruction.samCode());
 	}
 
 	/**
@@ -328,7 +370,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param opcode the operation code as defined in Mnemonic
 	 */
 	public void gen0Address(final SamOp opcode) {
-		writeFiles(opcode.samCodeString());
+		writeFiles(new ZeroAddress(opcode));
 	}
 
 	/**
@@ -340,7 +382,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param displacement an offset for the operand
 	 */
 	public void gen1Address(final SamOp opcode, final Mode mode, final int base, final int displacement) {
-		writeFiles(opcode.samCodeString() + mode.address(base, displacement));
+		writeFiles(new OneAddress(opcode, mode, base, displacement));
 	}
 
 	/**
@@ -360,23 +402,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * 
 	 * @param opcode the operation code as defined in Mnemonic
 	 * @param reg the register representing the first operand
-	 * @param mode  a valid addressing mode for the second operand of the
-	 *            instruction
+	 * @param mode a valid addressing mode for the second operand of the instruction
 	 * @param base a register for the second operand
 	 * @param displacement an offset for the second operand
 	 */
-	public void gen2Address(final SamOp opcode, final int reg, final Mode mode, final int base,
-			int displacement) {
-		if(opcode == INC || opcode == DEC){
-			int temp = reg;
-			if( reg == 0){
-				temp = 16;
-			}
-			writeFiles(opcode.samCodeString()+ "  " + temp +", " + mode.address(base, displacement));
-			return;
-		}
-		writeFiles(opcode.samCodeString() + 'R' + reg + ", "
-				+ mode.address(base, displacement));
+	public void gen2Address(final SamOp opcode, final int reg, final Mode mode, final int base, int displacement) {
+		writeFiles(new TwoAddress(opcode, reg, mode, base, displacement));
 	}
 
 	/**
@@ -399,7 +430,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param dmemLocation a string representing the second operand's label
 	 */
 	public void gen2Address(final SamOp opcode, final int reg, final String dmemLocation) {
-		writeFiles(opcode.samCodeString() + 'R' + reg + ", " + dmemLocation);
+		writeFiles(new TwoAddress(opcode, reg, dmemLocation));
 	}
 	
 	/**
@@ -410,7 +441,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param amount an integer in the range 1..16
 	 */
 	public void genShiftInstruction(final SamOp opcode, final int reg, final int amount){
-		writeFiles(opcode.samCodeString() + 'R' + reg + ", " + amount);
+		writeFiles(new Directive(opcode, "R" + reg + ", " + amount));
 	}
 	
 	/** Set a bit of a word corresponding to a register number.
@@ -443,7 +474,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param offset  the integer value of the label
 	 */
 	public void genJumpLabel(final SamOp opcode, final char prefix, final int offset) {
-		writeFiles(opcode.samCodeString() + prefix + offset);
+		String label = prefix + String.valueOf(offset);
+		if(definedLabels.get(label) == null){
+			undefinedLabels.add(label);
+		}
+		writeFiles(new Jump(opcode, label));
 	}
 
 	/**
@@ -453,7 +488,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param offset the integer value of the label
 	 */
 	public void genLabel(final char prefix, final int offset) {
-		writeFiles(LABEL_DIRECTIVE.samCodeString() + prefix + offset);
+		String label = prefix + String.valueOf(offset);
+		writeFiles(new Label(LABEL_DIRECTIVE, label));
 	}
 
 	/**
@@ -462,11 +498,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param value the value of the integer
 	 */
 	public void genIntDirective(final int value) {
-		writeFiles(INT_DIRECTIVE.samCodeString() + " " + value);
+		writeFiles(new Directive(INT_DIRECTIVE, String.valueOf(value)));
 	}
 	
 	public void genStringDirective(final String value) {
-		writeFiles(STRING_DIRECTIVE.samCodeString() + " " + value);
+		writeFiles(new Directive(STRING_DIRECTIVE, value));
 	}
 
 	/**
@@ -475,7 +511,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param number  of bytes to skip
 	 */
 	public void genSkipDirective(final int value) {
-		writeFiles(SKIP_DIRECTIVE.samCodeString() + " " + value);
+		writeFiles(new Skip(SKIP_DIRECTIVE, value));
 	}
 
 	/** Generate the startup allocation code */
@@ -501,7 +537,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param comment the comment
 	 */
 	public void genCodeComment(final String comment) {
-		writeFiles("% " + comment); // % is the SAM comment character
+		writeFiles(new Comment(comment));
 	}
 
 	/** Save the current register set and begin with a fresh one.
@@ -650,7 +686,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			return numberUsed;
 		}
 		
-		/** Print the allocated registers to the listing file. */
+		/** Print the allocated registers to the listing file
+		 * 
+		 */
 		public void printAllocated() {
 			boolean old = CompilerOptions.listCode;
 			CompilerOptions.listCode = true;
@@ -680,6 +718,15 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			boolean old = CompilerOptions.listCode;
 			CompilerOptions.listCode = true;
 			CompilerOptions.listCode("File error creating codefile: " + e);
+			CompilerOptions.listCode = old;
+			System.exit(1);
+		}
+		try {
+			objfile = new PrintWriter("OBJ");
+		} catch (IOException e) {
+			boolean old = CompilerOptions.listCode;
+			CompilerOptions.listCode = true;
+			CompilerOptions.listCode("File error creating OBJ: " + e);
 			CompilerOptions.listCode = old;
 			System.exit(1);
 		}
@@ -879,6 +926,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				else { // assume string constant
 					constantOffset += ((StringConstant) semanticItem).size();
 				}
+				
 			}
 			return new Location(mode, base, displacement);
 		}
@@ -895,6 +943,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 					StringConstant constant = (StringConstant) temp;
 					codegen.genStringDirective(constant.samString());
 				}
+
 			}
 		}
 
@@ -914,6 +963,397 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		static final void init(){ // needed to reinitialize between runs of GUICompiler	
 			storage = new Stack<SamConstant>();
+		}
+	}
+
+	//------------------------------- Honors Code ------------------------------------
+	/**
+	 * Assigns the low bits of value to bits on the range [fromBit, toBit].
+	 * 
+	 * @param bits BitSet to modify.
+	 * @param fromBit index of the starting bit to be modified.
+	 * @param toBit index of the ending bit to be modified.
+	 * @param value integer value to be assigned to that range.
+	 */
+	private static void setBits(BitSet bits, int fromBit, int toBit, int value){ 
+		// low bits of value to low bits of from--to. value >= 0
+		for(int i = fromBit; i <= toBit; ++i){
+			if(value % 2 == 1){
+				bits.set(i);
+			}
+			else {
+				bits.clear(i); // in case bits wasn't "zeros" to start
+			}
+			value = value >> 1;			
+		}
+	}
+
+	/**
+	 * @param code short integer value.
+	 * @return 16 bit BitSet representation.
+	 */
+	private static BitSet toBitSet(short code){
+		BitSet result = new  BitSet(16);
+		for(int i = 0; i < 16; ++i){
+			if(Math.abs(code % 2) == 1){
+				result.set(i);
+			}
+			code = (short)(code >> 1);
+		}
+		return result;
+	}
+
+	/**
+	 * @param set bit set whose string representation you want.
+	 * @return String representation of a bit set.
+	 */
+	private static String bitString(BitSet set){ // 16 bit sets only
+		String result = "";
+		for(int i = 15; i >=0; --i){
+			if(set.get(i)){
+				result += "1";
+			}
+			else{
+				result += "0";
+			}
+		}
+		return result;
+	}
+	
+	
+	/**
+	 * @param set bit set whose short integer representation you want.
+	 * @return short integer representation of a bit set.
+	 */
+	private static short fromBitSet(BitSet set){
+		String value = bitString(set);
+		return (short)Integer.parseInt(value, 2); // decode in base 2
+	}
+	
+	/** Instruction in sam or macc. */
+	interface Instruction {
+		
+		/**
+		 * @return Returns the assembly code as a String.
+		 */
+		public abstract String samCode();
+		
+		/**
+		 * @return Returns the macc code as a BitSet.
+		 */
+		public abstract BitSet maccCode();
+		
+		/**
+		 * @return Returns the size, in words (2 bytes), of the instruction.
+		 */
+		public abstract int maccSize();
+	}
+	
+	/** Comment instruction. Has no output in macc. */
+	class Comment implements Instruction{
+		
+		private String message;
+		
+		public Comment(String message){
+			this.message = message;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			return new BitSet(0);
+		}
+
+		@Override
+		public int maccSize() {
+			return 0;
+		}
+
+		@Override
+		public String samCode() {
+			return ("% " + message);
+		}
+		
+		
+	}
+	
+	/** Jump instruction. Must define offset in a second pass. */
+	class Jump implements Instruction{
+		
+		private SamOp opcode;
+		private String label;
+		private BitSet maccCode;
+		
+		public Jump(SamOp opcode, String label){
+			this.opcode = opcode;
+			this.label = label;
+		}
+		
+		/**
+		 * instantiates the macc code once the offset of the label is known.
+		 */
+		public void defineOffset(int offset){
+			maccCode = new BitSet(32);
+			maccCode.set(20);
+			setBits(maccCode, 27, 31, opcode.opCodeValue());
+			setBits(maccCode, 23, 26, opcode.specifier());
+			setBits(maccCode, 0, 15, offset);
+		}
+		
+		/**
+		 * @return String name of the label to which this instruction jumps.
+		 */
+		public String label(){
+			return label;
+		}
+
+		/**
+		 * Will return null if defineOffset has not yet been called.
+		 */
+		@Override
+		public BitSet maccCode() {
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + label);
+		}
+	}
+	
+	/** Label instruction. Has no output in macc. */
+	class Label implements Instruction{
+
+		private SamOp opcode;
+		private String name;
+		
+		public Label(final SamOp opcode, final String name){
+			this.opcode = opcode;
+			this.name = name;
+		}
+		
+		public String name(){
+			return name;
+		}
+		
+		@Override
+		public BitSet maccCode() {
+			return new BitSet(0);
+		}
+
+		@Override
+		public int maccSize() {
+			return 0;
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString() + name;
+		}
+	}
+	
+	/** Write instruction. */
+	class Write implements Instruction{
+		
+		public Write(final SamOp opcode, final int base, final int displacement){
+			
+		}
+
+		@Override
+		public BitSet maccCode() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public int maccSize() {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public String samCode() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+	}
+	
+	/** Skip instruction. Allocates memory. */
+	class Skip implements Instruction{
+		
+		private SamOp opcode;
+		private int allocatedSize;
+		
+		/**
+		 * @param allocatedSize in 2 word intervals.
+		 */
+		public Skip(final SamOp opcode, final int allocatedSize){
+			this.opcode = opcode;
+			this.allocatedSize = allocatedSize;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			return new BitSet(allocatedSize * 32);
+		}
+
+		@Override
+		public int maccSize() {
+			return (allocatedSize * 2);
+		}
+
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + allocatedSize);
+		}
+	}
+	
+	/** Directive instruction. */
+	class Directive implements Instruction{
+		
+		private SamOp opcode;
+		private String directive;
+		
+		public Directive(final SamOp opcode, final String directive){
+			this.opcode = opcode;
+			this.directive = directive;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			// TODO Implement Properly.
+			BitSet maccCode = new BitSet(16);
+			setBits(maccCode, 11, 15, opcode.opCodeValue());
+			setBits(maccCode, 5, 8, opcode.specifier());
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + directive);
+		}
+	}
+	
+	/** Instruction with zero addresses. */
+	class ZeroAddress implements Instruction{
+		
+		private SamOp opcode;
+		
+		public ZeroAddress(final SamOp opcode){
+			this.opcode = opcode; 
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(16);
+			setBits(maccCode, 11, 15, opcode.opCodeValue());
+			setBits(maccCode, 7, 10, opcode.specifier());
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString();
+		}
+	}
+	
+	/** Instruction with one address. */
+	class OneAddress implements Instruction{
+		
+		private SamOp opcode;
+		private Mode mode;
+		private int base;
+		private int displacement;
+		
+		public OneAddress(final SamOp opcode, final Mode mode, final int base, final int displacement){
+			this.opcode = opcode;
+			this.mode = mode;
+			this.base = base;
+			this.displacement = displacement;
+		}
+		
+		@Override
+		public String samCode(){
+			return (opcode.samCodeString() + mode.address(base, displacement));
+		}
+
+		@Override
+		public BitSet maccCode() {
+			// TODO Implement Properly.
+			return null;
+		}
+
+		@Override
+		public int maccSize() {
+			return mode.bytesRequired();
+		}
+	}
+	
+	/** Instruction with two addresses. */
+	class TwoAddress implements Instruction{
+		
+		private SamOp opcode;
+		private int reg;
+		private Mode mode;
+		private int base;
+		private int displacement;
+		private String dmemLocation;
+		
+		public TwoAddress(final SamOp opcode, final int reg, final Mode mode, final int base, int displacement){
+			this.opcode = opcode;
+			this.reg = reg;
+			this.mode = mode;
+			this.base = base;
+			this.displacement = displacement;
+		}
+		
+		public TwoAddress(final SamOp opcode, final int reg, final String dmemLocation){
+			this.opcode = opcode;
+			this.reg = reg;
+			this.dmemLocation = dmemLocation;
+		}
+		
+		@Override
+		public String samCode(){
+			if (dmemLocation == null) {
+			    if(opcode == Mnemonic.INC || opcode == Mnemonic.DEC){
+			         int temp = reg;
+			         if( reg == 0){
+		                 temp = 16;
+			         }
+			         return (opcode.samCodeString()+ mode.address(base, displacement) + ", " + temp );
+			    }
+			    return (opcode.samCodeString() + 'R' + reg + ", " + mode.address(base, displacement));
+			}
+			return (opcode.samCodeString() + 'R' + reg + ", " + dmemLocation);
+		}
+
+		@Override
+		public BitSet maccCode() {
+			// TODO Implement Properly.
+			return null;
+		}
+
+		@Override
+		public int maccSize() {
+			if(mode != null){
+				return mode.bytesRequired();
+			}
+			return 2;
 		}
 	}
 }
