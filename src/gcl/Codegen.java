@@ -318,34 +318,47 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * Replaces labels with offsets and writes the codefile and objfile.
 	 */
 	public void writeInstructionList(){
-//		instructionListFirstPass();
+		defineLabelOffsets();
 		for(Instruction instruction : instructionList){
 			codefile.println(instruction.samCode());
-//			objfile.println(instruction.maccInstruction().maccCode());
+			//objfile.println(fromBitSet(instruction.maccCode())); TODO remove this comment when testing obj output.
 		}
 	}
 
 	/**
 	 * Finds the memory offsets of labels
 	 */
-	private void instructionListFirstPass(){
- 		// Items should polymorphically reference the definedLabels hashTable for their offset when their maccCode.maccCode is called.
-//		int instructionIndex = 0; // Address offset of next instruction allocated.		
-//		for(SamInstruction instruction : instructionList){
-//			if(instruction.usesLabel()){
-//				if(definedLabels.get(instruction.label()) == null){
-//					undefinedLabels.add(label);
-//				}
-//			}
-//			else if(instruction.isLabel()){
-//				undefinedLabels.remove(label);
-//				definedLabels.put(label, instructionIndex);
-//			}
-//			instructionIndex += instruction.size();
-//		}
+	private void defineLabelOffsets(){
+		Integer instructionOffset = 0;
+		Integer offset = null;
+		// first pass: record label offsets.
+		for(Instruction instruction : instructionList){
+			if(instruction instanceof Label){
+				Label labelInstruction = (Label)instruction;
+				undefinedLabels.remove(labelInstruction.name());
+				definedLabels.put(labelInstruction.name(), instructionOffset);
+			}
+			instructionOffset += instruction.maccSize();
+		}
+		// second pass: define jump offsets.
+		for(Instruction instruction : instructionList){ // TODO can be implemented as part of the write loop in writeInstructionList.
+			if(instruction instanceof Jump){
+				Jump jumpInstruction = (Jump)instruction;
+				offset = definedLabels.get(jumpInstruction.label());
+				if(offset == null){
+					err.semanticError(GCLError.LABEL_UNDEFINED, jumpInstruction.label());
+				}
+				else{
+					jumpInstruction.defineOffset(offset);
+				}
+			}
+		}
 	}
 	
-	// This adds the instruction to the list and optionally to the listing.
+	/**
+	 * This adds the instruction to the list and optionally to the listing.
+	 * @param instruction sam/macc instruction.
+	 */
 	private void writeFiles(final Instruction instruction) {
 		instructionList.add(instruction);
 		CompilerOptions.listCode("$   " + instruction.samCode());
@@ -465,7 +478,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		if(definedLabels.get(label) == null){
 			undefinedLabels.add(label);
 		}
-		writeFiles(new Directive(opcode, label));
+		writeFiles(new Jump(opcode, label));
 	}
 
 	/**
@@ -476,7 +489,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void genLabel(final char prefix, final int offset) {
 		String label = prefix + String.valueOf(offset);
-		writeFiles(new Directive(LABEL_DIRECTIVE, label));
+		writeFiles(new Label(LABEL_DIRECTIVE, label));
 	}
 
 	/**
@@ -1066,9 +1079,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	/** Jump instruction. Must define offset in a second pass. */
 	class Jump implements Instruction{
 		
-		private BitSet maccCode;
-		private String label;
 		private SamOp opcode;
+		private String label;
+		private BitSet maccCode;
 		
 		public Jump(SamOp opcode, String label){
 			this.opcode = opcode;
@@ -1109,6 +1122,37 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public String samCode() {
 			return (opcode.samCodeString() + label);
+		}
+	}
+	
+	/** Label instruction. Has no output in macc. */
+	class Label implements Instruction{
+
+		private SamOp opcode;
+		private String name;
+		
+		public Label(final SamOp opcode, final String name){
+			this.opcode = opcode;
+			this.name = name;
+		}
+		
+		public String name(){
+			return name;
+		}
+		
+		@Override
+		public BitSet maccCode() {
+			return new BitSet(0);
+		}
+
+		@Override
+		public int maccSize() {
+			return 0;
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString() + name;
 		}
 	}
 	
