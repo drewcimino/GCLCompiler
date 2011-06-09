@@ -18,7 +18,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	private Stack<RegisterSet> savedRegisters = new Stack<RegisterSet>();
 	// Honors Code
 	private PrintWriter objfile;
-	private Collection<SamInstruction> instructionList = new ArrayList<SamInstruction>(); // Collection of instructions
+	private Collection<Instruction> instructionList = new ArrayList<Instruction>(); // Collection of instructions
 	private Hashtable<String, Integer> definedLabels = new Hashtable<String, Integer>(); // Label definitions String name -> int instructionIndex
 	private Set<String> undefinedLabels = new HashSet<String>(); // Labels referenced but not yet defined.
 
@@ -159,6 +159,52 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		}
 		return new Location(mode, base, displacement);
 	}
+	
+	/**
+	 * Used to extract a component stored in a tuple.
+	 *
+	 * @param tupleExpression A tuple which contains the target component.
+	 * @param fieldName Identifier of the target member.
+	 * @return tupleExpression@fieldName
+	 */
+	public Expression extractTupleComponent(VariableExpression tupleExpression, Identifier fieldName){
+		
+		TupleType tupleType = tupleExpression.type().expectTupleType(err);
+		TypeDescriptor fieldType;
+		int fieldInset;
+		try{
+			fieldType = tupleType.getType(fieldName);
+			fieldInset = tupleType.getInset(fieldName);
+		}
+		catch(NoSuchElementException e){
+			err.semanticError(GCLError.NAME_NOT_DEFINED);
+			return new ErrorExpression("$ Invalid tuple member identifier.");
+		}
+		catch(NullPointerException e){
+			err.semanticError(GCLError.NAME_NOT_DEFINED);
+			return new ErrorExpression("$ Invalid tuple member identifier.");
+		}
+		
+		if(tupleExpression.case1()){
+			return new VariableExpression(fieldType, tupleExpression.semanticLevel(), tupleExpression.offset() + fieldInset, DIRECT);
+		}
+		if(tupleExpression.case2()){
+			int tupleAddressOffset = loadAddress(tupleExpression);
+			if(fieldInset != 0){ 
+				gen2Address(IA, tupleAddressOffset, "#" + fieldInset);
+			}
+			return new VariableExpression(fieldType, tupleExpression.semanticLevel(), tupleAddressOffset, INDIRECT);
+		}
+		if(tupleExpression.case3()){
+			int tupleAddressOffset = loadPointer(tupleExpression);
+			if(fieldInset != 0){ 
+				gen2Address(IA, tupleAddressOffset, "#" + fieldInset);
+			}
+			return new VariableExpression(fieldType, 0, tupleAddressOffset, INDIRECT);
+		}
+		err.semanticError(GCLError.ILLEGAL_TUPLE_ACCESS);
+		return new ErrorExpression("$ Unable to extract tuple component.");
+	}
 
 	/**
 	 * Load a value into a register (or say which register if already loaded).
@@ -273,7 +319,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void writeInstructionList(){
 //		instructionListFirstPass();
-		for(SamInstruction instruction : instructionList){
+		for(Instruction instruction : instructionList){
 			codefile.println(instruction.samCode());
 //			objfile.println(instruction.maccInstruction().maccCode());
 		}
@@ -300,7 +346,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 	
 	// This adds the instruction to the list and optionally to the listing.
-	private void writeFiles(final SamInstruction instruction) {
+	private void writeFiles(final Instruction instruction) {
 		instructionList.add(instruction);
 		CompilerOptions.listCode("$   " + instruction.samCode());
 	}
@@ -311,7 +357,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param opcode the operation code as defined in Mnemonic
 	 */
 	public void gen0Address(final SamOp opcode) {
-		writeFiles(new SamInstruction.ZeroAddress(opcode));
+		writeFiles(new ZeroAddress(opcode));
 	}
 
 	/**
@@ -323,7 +369,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param displacement an offset for the operand
 	 */
 	public void gen1Address(final SamOp opcode, final Mode mode, final int base, final int displacement) {
-		writeFiles(new SamInstruction.OneAddress(opcode, mode, base, displacement));
+		writeFiles(new OneAddress(opcode, mode, base, displacement));
 	}
 
 	/**
@@ -343,13 +389,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * 
 	 * @param opcode the operation code as defined in Mnemonic
 	 * @param reg the register representing the first operand
-	 * @param mode  a valid addressing mode for the second operand of the
-	 *            instruction
+	 * @param mode a valid addressing mode for the second operand of the instruction
 	 * @param base a register for the second operand
 	 * @param displacement an offset for the second operand
 	 */
 	public void gen2Address(final SamOp opcode, final int reg, final Mode mode, final int base, int displacement) {
-		writeFiles(new SamInstruction.TwoAddress(opcode, reg, mode, base, displacement));
+		writeFiles(new TwoAddress(opcode, reg, mode, base, displacement));
 	}
 
 	/**
@@ -372,7 +417,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param dmemLocation a string representing the second operand's label
 	 */
 	public void gen2Address(final SamOp opcode, final int reg, final String dmemLocation) {
-		writeFiles(new SamInstruction.TwoAddress(opcode, reg, dmemLocation));
+		writeFiles(new TwoAddress(opcode, reg, dmemLocation));
 	}
 	
 	/**
@@ -383,7 +428,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param amount an integer in the range 1..16
 	 */
 	public void genShiftInstruction(final SamOp opcode, final int reg, final int amount){
-		writeFiles(new SamInstruction.Directive(opcode, 'R' + reg + ", " + amount));
+		writeFiles(new Directive(opcode, "R" + reg + ", " + amount));
 	}
 	
 	/** Set a bit of a word corresponding to a register number.
@@ -420,7 +465,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		if(definedLabels.get(label) == null){
 			undefinedLabels.add(label);
 		}
-		writeFiles(new SamInstruction.Directive(opcode, label));
+		writeFiles(new Directive(opcode, label));
 	}
 
 	/**
@@ -431,7 +476,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void genLabel(final char prefix, final int offset) {
 		String label = prefix + String.valueOf(offset);
-		writeFiles(new SamInstruction.Directive(LABEL_DIRECTIVE, label));
+		writeFiles(new Directive(LABEL_DIRECTIVE, label));
 	}
 
 	/**
@@ -440,11 +485,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param value the value of the integer
 	 */
 	public void genIntDirective(final int value) {
-		writeFiles(new SamInstruction.Directive(INT_DIRECTIVE, String.valueOf(value)));
+		writeFiles(new Directive(INT_DIRECTIVE, String.valueOf(value)));
 	}
 	
 	public void genStringDirective(final String value) {
-		writeFiles(new SamInstruction.Directive(STRING_DIRECTIVE, value));
+		writeFiles(new Directive(STRING_DIRECTIVE, value));
 	}
 
 	/**
@@ -453,7 +498,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param number  of bytes to skip
 	 */
 	public void genSkipDirective(final int value) {
-		writeFiles(new SamInstruction.Directive(SKIP_DIRECTIVE, String.valueOf(value)));
+		writeFiles(new Skip(SKIP_DIRECTIVE, value));
 	}
 
 	/** Generate the startup allocation code */
@@ -479,7 +524,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param comment the comment
 	 */
 	public void genCodeComment(final String comment) {
-		writeFiles(new SamInstruction.Directive("% " + comment));
+		writeFiles(new Comment(comment));
 	}
 
 	/** Save the current register set and begin with a fresh one.
@@ -909,176 +954,233 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	//------------------------------- Honors Code ------------------------------------
-	static abstract class SamInstruction {
-
-		/**
-		 * @return Returns the samInstruction as a String.
-		 */
-		abstract public String samCode();
-		/**
-		 * @return Returns the maccInstruction as a MaccInstruction instance.
-		 */
-		abstract public MaccInstruction maccInstruction();
-		/**
-		 * @return Returns the size, in bytes, of the instruction.
-		 */
-		abstract public int size();
+	/** Instruction in sam or macc. */
+	static abstract class Instruction {
 		
-		static class Directive extends SamInstruction{
-			
-			private SamOp opcode;
-			private String directive;
-			private MaccInstruction maccInstruction;
-			
-			public Directive(SamOp opcode, String directive){
-				this.opcode = opcode;
-				this.directive = directive;
-			}
-			
-			public Directive(String directive){
-				this.directive = directive;
-			}
-			
-			@Override
-			public String samCode(){
-				if(opcode == null){
-					return directive;
-				}
-				return opcode.samCodeString() + directive;
-			}
-
-			@Override
-			public MaccInstruction maccInstruction() {
-				return maccInstruction;
-			}
-
-			@Override
-			public int size() {
-				return 2;
-			}
+		protected String samCode;
+		protected BitSet maccCode;
+		protected int maccSize;
+		
+		/**
+		 * @return Returns the assembly code as a String.
+		 */
+		public String samCode(){
+			return samCode;
 		}
 		
-		static class ZeroAddress extends SamInstruction{
-			
-			private SamOp opcode;
-			private MaccInstruction maccInstruction;
-			
-			public ZeroAddress(final SamOp opcode){
-				this.opcode = opcode;
-			}
-			
-			@Override
-			public String samCode(){
-				return opcode.samCodeString();
-			}
-
-			@Override
-			public
-			MaccInstruction maccInstruction() {
-				return maccInstruction;
-			}
-
-			@Override
-			public int size() {
-				// TODO define instructionSize()
-				return 0;
-			}
+		/**
+		 * @return Returns the macc code as a BitSet.
+		 */
+		public BitSet maccCode(){
+			return maccCode;
 		}
 		
-		static class OneAddress extends SamInstruction{
-			
-			private SamOp opcode;
-			private Mode mode;
-			private int base;
-			private int displacement;
-			private MaccInstruction maccInstruction;
-			
-			public OneAddress(final SamOp opcode, final Mode mode, final int base, final int displacement){
-				this.opcode = opcode;
-				this.mode = mode;
-				this.base = base;
-				this.displacement = displacement;
-			}
-			
-			@Override
-			public String samCode(){
-				return (opcode.samCodeString() + mode.address(base, displacement));
-			}
-
-			@Override
-			public MaccInstruction maccInstruction() {
-				return maccInstruction;
-			}
-
-			@Override
-			public int size() {
-				return mode.bytesRequired();
-			}
+		/**
+		 * @return Returns the size, in words (2 bytes), of the instruction.
+		 */
+		public int maccSize(){
+			return maccSize;
 		}
 		
-		static class TwoAddress extends SamInstruction{
+		protected static void setBits( BitSet bits, int fromBit, int toBit, int value){ 
 			
-			private SamOp opcode;
-			private int reg;
-			private Mode mode;
-			private int base;
-			private int displacement;
-			private String dmemLocation;
-			private MaccInstruction maccInstruction;
-			
-			public TwoAddress(final SamOp opcode, final int reg, final Mode mode, final int base, int displacement){
-				this.opcode = opcode;
-				this.reg = reg;
-				this.mode = mode;
-				this.base = base;
-				this.displacement = displacement;
-			}
-			
-			public TwoAddress(final SamOp opcode, final int reg, final String dmemLocation){
-				this.opcode = opcode;
-				this.reg = reg;
-				this.dmemLocation = dmemLocation;
-			}
-			
-			@Override
-			public String samCode(){
-				if (dmemLocation == null) {
-				    if(opcode == Mnemonic.INC || opcode == Mnemonic.DEC){
-				         int temp = reg;
-				         if( reg == 0){
-			                 temp = 16;
-				         }
-				         return (opcode.samCodeString()+ mode.address(base, displacement) + ", " + temp );
-				    }
-				    return (opcode.samCodeString() + 'R' + reg + ", " + mode.address(base, displacement));
+			// low bits of value to low bits of from--to. value >= 0
+			for(int i = fromBit; i <= toBit; ++i){
+				if(value % 2 == 1){
+					bits.set(i);
 				}
-				return (opcode.samCodeString() + 'R' + reg + ", " + dmemLocation);
-			}
-
-			@Override
-			public MaccInstruction maccInstruction() {
-				return maccInstruction;
-			}
-
-			@Override
-			public int size() {
-				if(mode != null){
-					return mode.bytesRequired();
+				else {
+					bits.clear(i); // in case bits wasn't "zeros" to start
 				}
-				else return 2;
-				//TODO implement 2 address no mode size.
+				value = value >> 1;			
 			}
+		}
+
+		/**
+		 * @param code short integer value.
+		 * @return BitSet representation of code.
+		 */
+		protected static BitSet toBitSet(short code){ // 16 bit sets only
+			
+			BitSet result = new  BitSet(16);
+			for(int i = 0; i < 16; ++i){
+				if(Math.abs(code % 2) == 1){
+					result.set(i);
+				}
+				code = (short)(code >> 1);
+			}
+			return result;
+		}
+
+		/**
+		 * @param set
+		 * @return
+		 */
+		protected static String bitString( BitSet set){ // 16 bit sets only
+			
+			String result = "";
+			for(int i = 15; i >=0; --i){
+				if(set.get(i)){
+					result += "1";
+				}
+				else{
+					result += "0";
+				}
+			}
+			return result;
+		}
+		
+		
+		protected static short fromBitSet(BitSet set){
+			
+			String value = bitString(set);
+			return (short)Integer.parseInt(value, 2); // decode in base 2
 		}
 	}
+	
+	/** Comment instruction. Has no output in macc. */
+	class Comment extends Instruction{
 		
-	/**
-	 * Bit level representation of the instruction.
-	 */
-	static abstract class MaccInstruction implements MaccSaveable{//implements MaccSaveable?
+		public Comment(String message){
+			samCode = "% " + message;
+			maccCode = new BitSet(0);
+			maccSize = 0;
+		}
+	}
+	
+	/** Jump instruction. Must define offset in a second pass. */
+	class Jump extends Instruction{
+		
+		private String label;
+		private SamOp opcode;
+		
+		public Jump(SamOp opcode, String label){
+			this.opcode = opcode;
+			this.label = label;
+			maccSize = 2;
+			samCode = opcode.samCodeString() + label;
+		}
 		
 		/**
-		 * @return the maccInstruction as a String.
+		 * Produces the macc code once the offset of the label is known.
 		 */
-		abstract public String maccCode();
+		public void defineOffset(int offset){
+			maccCode = new BitSet(32);
+			maccCode.set(20);
+			setBits(maccCode, 27, 31, opcode.opCodeValue());
+			setBits(maccCode, 23, 26, opcode.specifier());
+			setBits(maccCode, 0, 15, offset);
+		}
+		
+		public String label(){
+			return label;
+		}
+	}
+	
+	/** Write instruction. */
+	class Write extends Instruction{
+		
+		public Write(SamOp opcode, int register, int offset){
+			
+		}
+	}
+	
+	/** Skip instruction. Allocates memory. */
+	class Skip extends Instruction{
+		
+		/**
+		 * @param allocatedSize in 2 word intervals.
+		 */
+		public Skip(final SamOp opcode, final int allocatedSize){
+			samCode = opcode.samCodeString() + allocatedSize;
+			maccCode = new BitSet(allocatedSize * 32);
+			maccSize = allocatedSize * 2;
+		}
+	}
+	
+	/** Directive instruction. */
+	class Directive extends Instruction{
+		
+		public Directive(SamOp opcode, String directive){
+			samCode = opcode.samCodeString() + directive;
+			maccCode = new BitSet(16);
+			setBits(maccCode, 11, 15, opcode.opCodeValue());
+			setBits(maccCode, 5, 8, opcode.specifier());
+			//setBits(maccCode, )
+			maccSize = 2;
+		}
+	}
+	
+	/** Instruction with zero addresses. */
+	class ZeroAddress extends Instruction{
+		
+		public ZeroAddress(final SamOp opcode){
+			samCode = opcode.samCodeString();
+			//maccSize = 2;
+		}
+	}
+	
+	/** Instruction with one address. */
+	class OneAddress extends Instruction{
+		
+		private SamOp opcode;
+		private Mode mode;
+		private int base;
+		private int displacement;
+		
+		public OneAddress(final SamOp opcode, final Mode mode, final int base, final int displacement){
+			this.opcode = opcode;
+			this.mode = mode;
+			this.base = base;
+			this.displacement = displacement;
+			maccSize = mode.bytesRequired();
+		}
+		
+		@Override
+		public String samCode(){
+			return (opcode.samCodeString() + mode.address(base, displacement));
+		}
+	}
+	
+	/** Instruction with two addresses. */
+	class TwoAddress extends Instruction{
+		
+		private SamOp opcode;
+		private int reg;
+		private Mode mode;
+		private int base;
+		private int displacement;
+		private String dmemLocation;
+		
+		public TwoAddress(final SamOp opcode, final int reg, final Mode mode, final int base, int displacement){
+			this.opcode = opcode;
+			this.reg = reg;
+			this.mode = mode;
+			this.base = base;
+			this.displacement = displacement;
+			maccSize = mode.bytesRequired();
+		}
+		
+		public TwoAddress(final SamOp opcode, final int reg, final String dmemLocation){
+			this.opcode = opcode;
+			this.reg = reg;
+			this.dmemLocation = dmemLocation;
+			maccSize = 2; //TODO implement 2 address no mode size.
+		}
+		
+		@Override
+		public String samCode(){
+			if (dmemLocation == null) {
+			    if(opcode == Mnemonic.INC || opcode == Mnemonic.DEC){
+			         int temp = reg;
+			         if( reg == 0){
+		                 temp = 16;
+			         }
+			         return (opcode.samCodeString()+ mode.address(base, displacement) + ", " + temp );
+			    }
+			    return (opcode.samCodeString() + 'R' + reg + ", " + mode.address(base, displacement));
+			}
+			return (opcode.samCodeString() + 'R' + reg + ", " + dmemLocation);
+		}
 	}
 }
