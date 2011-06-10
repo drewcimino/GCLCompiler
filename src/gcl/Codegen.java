@@ -17,7 +17,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	private RegisterSet registers = new RegisterSet();
 	private Stack<RegisterSet> savedRegisters = new Stack<RegisterSet>();
 	// Honors Code
-	private PrintWriter objfile;
+	private FileOutputStream objfile;
 	private Collection<Instruction> instructionList = new ArrayList<Instruction>(); // Collection of instructions
 	private Hashtable<String, Integer> definedLabels = new Hashtable<String, Integer>(); // Label definitions String name -> int instructionIndex
 
@@ -35,7 +35,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	public void closeObjfile() {
-		objfile.close();
+		try {
+			objfile.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -327,12 +332,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void writeInstructionList(){
 		defineLabelOffsets();
-		String byteProgram = "";
 		for(Instruction instruction : instructionList){
 			codefile.println(instruction.samCode());
-			byteProgram += new String(toByteArray(instruction.maccCode(), instruction.maccSize()));
+			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
+			catch (IOException e) { e.printStackTrace(); }
 		}
-		objfile.print(byteProgram);
 	}
 
 	/**
@@ -340,9 +344,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public static byte[] toByteArray(BitSet bits, int maccSize){
 	    byte[] bytes = new byte[maccSize];
-	    for (int i = 0; i < (maccSize*8)-1; i++){
+	    for (int i = 0; i < (maccSize*8); i++){
 	        if (bits.get(i)){
-	            bytes[bytes.length-i/8-1] |= 1<<(i%8);
+	            bytes[maccSize-(i/8)-1] |= 1<<(i%8);
 	        }
 	    }
 	    return bytes;
@@ -465,7 +469,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param amount an integer in the range 1..16
 	 */
 	public void genShiftInstruction(final SamOp opcode, final int reg, final int amount){
-		writeFiles(new Directive(opcode, "R" + reg + ", " + amount));
+		//FIX THIS LATER TODO
+		//writeFiles(new Directive(opcode, "R" + reg + ", " + amount));
 	}
 
 	/** Set a bit of a word corresponding to a register number.
@@ -518,11 +523,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param value the value of the integer
 	 */
 	public void genIntDirective(final int value) {
-		writeFiles(new Directive(INT_DIRECTIVE, String.valueOf(value)));
+		writeFiles(new IntDirective(INT_DIRECTIVE, value));
 	}
 
 	public void genStringDirective(final String value) {
-		writeFiles(new Directive(STRING_DIRECTIVE, value));
+		writeFiles(new StringDirective(STRING_DIRECTIVE, value));
 	}
 
 	/**
@@ -742,7 +747,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			System.exit(1);
 		}
 		try {
-			objfile = new PrintWriter("OBJ");
+			objfile = new FileOutputStream("OBJ");
 		} catch (IOException e) {
 			boolean old = CompilerOptions.listCode;
 			CompilerOptions.listCode = true;
@@ -1007,6 +1012,19 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			value = value >> 1;
 		}
 	}
+	
+	/**
+	 * Assigns the binary form of value to bits.
+	 * 
+	 * @param bits BitSet to modify.
+	 * @param value String value to be assigned to bits.
+	 */
+	private static void setBits(BitSet bits, String value){
+		
+		for(int i = 0; i < value.length(); i++){
+			setBits(bits, i*8, (i+1)*8, value.charAt(value.length()-i-1));
+		}
+	}
 
 	/**
 	 * @param code short integer value.
@@ -1039,7 +1057,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		}
 		return result;
 	}
-
 
 	/**
 	 * @param set bit set whose short integer representation you want.
@@ -1128,7 +1145,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			setBits(maccCode, 23, 26, opcode.specifier());
 			setBits(maccCode, 0, 15, offset);
 		}
-
 		@Override
 		public String label(){
 			return label;
@@ -1141,7 +1157,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public int maccSize() {
-			return 2;
+			return 4;
 		}
 
 		@Override
@@ -1237,30 +1253,58 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			return (opcode.samCodeString() + allocatedSize);
 		}
 	}
-
-	/** Directive instruction. */
-	class Directive implements Instruction{
+	
+	/** Int directive instruction. */
+	class IntDirective implements Instruction{
 
 		private SamOp opcode;
-		private String directive;
-
-		public Directive(final SamOp opcode, final String directive){
+		private int directive;
+		
+		public IntDirective(final SamOp opcode, final int directive){
 			this.opcode = opcode;
 			this.directive = directive;
+		}
+		
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + String.valueOf(directive));
 		}
 
 		@Override
 		public BitSet maccCode() {
-			// TODO Implement Properly.
 			BitSet maccCode = new BitSet(16);
-			setBits(maccCode, 11, 15, opcode.opCodeValue());
-			setBits(maccCode, 5, 8, opcode.specifier());
+			setBits(maccCode, 0, 15, directive);
 			return maccCode;
 		}
 
 		@Override
 		public int maccSize() {
 			return 2;
+		}
+	}
+
+	/** String directive instruction. */
+	class StringDirective implements Instruction{
+
+		private SamOp opcode;
+		private String directive;
+
+		public StringDirective(final SamOp opcode, String directive){
+			this.opcode = opcode;
+			directive = directive.substring(1, directive.length() - 1).replaceAll("::", ":").replaceAll(":'", "'").replaceAll(":\"", "\"");
+			this.directive = directive;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet((directive.length()+1)*8);
+			setBits(maccCode, directive);
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return directive.length()+1;// in order to make macc string null terminated.
 		}
 
 		@Override
@@ -1422,7 +1466,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			return mode.bytesRequired();
 		}
 	}
-	
+
 	/** Two Address instruction that makes use of a label. */
 	class TwoAddressLabel implements Instruction, LabelReference{
 		
@@ -1430,6 +1474,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		private int reg;
 		private BitSet maccCode;
 		private String label;
+		
 		
 		public TwoAddressLabel(final SamOp opcode, final int reg, final String label){
 			this.opcode = opcode;
@@ -1440,11 +1485,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
-			setBits(maccCode, 27, 31, opcode.opCodeValue());
-			setBits(maccCode, 23, 26, reg);
-			setBits(maccCode, 20, 22, Mode.DMEM.samCode());
-			maccCode.set(16, 19, false);
-			setBits(maccCode, 0, 15, offset);
+			setBits(maccCode, 0, 15, offset);// offset
+			maccCode.set(16, 20, false);// 2nd register
+			setBits(maccCode, 20, 22, Mode.DMEM.samCode());// mode 
+			setBits(maccCode, 23, 26, reg);// 1st register
+			setBits(maccCode, 27, 31, opcode.opCodeValue());// operation
+			
 		}
 
 		@Override
