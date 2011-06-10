@@ -2452,7 +2452,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression tupleComponent(VariableExpression tupleExpression, Identifier fieldName){
 		
-		return codegen.extractTupleComponent(tupleExpression, fieldName);
+		return new ErrorExpression("");
+		//return codegen.extractTupleComponent(tupleExpression, fieldName); TODO why don't we need extract tuple component?
 	}
 	
 	/***************************************************************************

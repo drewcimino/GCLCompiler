@@ -20,7 +20,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	private PrintWriter objfile;
 	private Collection<Instruction> instructionList = new ArrayList<Instruction>(); // Collection of instructions
 	private Hashtable<String, Integer> definedLabels = new Hashtable<String, Integer>(); // Label definitions String name -> int instructionIndex
-	private Set<String> undefinedLabels = new HashSet<String>(); // Labels referenced but not yet defined.
 
 	Codegen(final SemanticActions.GCLErrorStream err) {
 		this.err = err;
@@ -228,8 +227,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			err.semanticError(GCLError.ILLEGAL_LOAD);
 			return 0;
 		}
-		int size = expression.type().size() / 2; // number of registers
-		// needed
+		int size = expression.type().size() / 2; // number of registers needed
 		if (size > 2) {
 			err.semanticError(GCLError.ILLEGAL_LOAD_SIZE);
 			return -1;
@@ -325,7 +323,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/**
-	 * Replaces labels with offsets and writes the codefile and objfile.
+	 * Replaces labels with offsets and then writes the codefile and objfile.
 	 */
 	public void writeInstructionList(){
 		defineLabelOffsets();
@@ -337,11 +335,13 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		objfile.print(byteProgram);
 	}
 
-	//This works supposedly, apparently java 1.7 has this built in already
-	public static byte[] toByteArray(BitSet bits, int maccSize) {
+	/**
+	 * @return Returns the first [maccSize] bytes of [bits] as a byte array.
+	 */
+	public static byte[] toByteArray(BitSet bits, int maccSize){
 	    byte[] bytes = new byte[maccSize];
-	    for (int i=0; i<maccSize*8; i++) {
-	        if (bits.get(i)) {
+	    for (int i = 0; i < (maccSize*8)-1; i++){
+	        if (bits.get(i)){
 	            bytes[bytes.length-i/8-1] |= 1<<(i%8);
 	        }
 	    }
@@ -354,17 +354,18 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	private void defineLabelOffsets(){
 		Integer instructionOffset = 0;
 		Integer offset = null;
+		
 		// first pass: record label offsets.
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof Label){
 				Label labelInstruction = (Label)instruction;
-				undefinedLabels.remove(labelInstruction.name());
 				definedLabels.put(labelInstruction.name(), instructionOffset);
 			}
 			instructionOffset += instruction.maccSize();
 		}
-		// second pass: define jump offsets.
-		for(Instruction instruction : instructionList){ // TODO can be implemented as part of the write loop in writeInstructionList.
+		
+		// second pass: define label reference offsets.
+		for(Instruction instruction : instructionList){
 			if(instruction instanceof LabelReference){
 				LabelReference labelInstruction = (LabelReference) instruction;
 				offset = definedLabels.get(labelInstruction.label());
@@ -497,11 +498,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param offset the integer value of the label
 	 */
 	public void genJumpLabel(final SamOp opcode, final char prefix, final int offset) {
-		String label = prefix + String.valueOf(offset);
-		if(definedLabels.get(label) == null){
-			undefinedLabels.add(label);
-		}
-		writeFiles(new Jump(opcode, label));
+		writeFiles(new Jump(opcode, prefix + String.valueOf(offset)));
 	}
 
 	/**
@@ -1072,6 +1069,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public abstract int maccSize();
 	}
 	
+	/** Instruction which references a label and needs to defineOffset in the second pass. */
 	interface LabelReference{
 		
 		/**
@@ -1080,7 +1078,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public void defineOffset(final int offset);
 		
 		/**
-		 * @return String name of the label to which this instruction jumps.
+		 * @return String name of the label which this instruction refers to.
 		 */
 		public String label();
 	}
@@ -1108,8 +1106,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public String samCode() {
 			return ("% " + message);
 		}
-
-
 	}
 
 	/** Jump instruction. Must define offset in a second pass. */
@@ -1124,9 +1120,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			this.label = label;
 		}
 
-		/**
-		 * instantiates the macc code once the offset of the label is known.
-		 */
+		@Override
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
 			maccCode.set(20);
@@ -1135,16 +1129,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			setBits(maccCode, 0, 15, offset);
 		}
 
-		/**
-		 * @return String name of the label to which this instruction jumps.
-		 */
+		@Override
 		public String label(){
 			return label;
 		}
 
-		/**
-		 * Will return null if defineOffset has not yet been called.
-		 */
 		@Override
 		public BitSet maccCode() {
 			return maccCode;
@@ -1193,8 +1182,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/** Write instruction. */
-	//Writes are one address or zero address instructions I believe
-	/*class Write implements Instruction{
+	//Writes are one address or zero address instructions I believe - Allon: they use opcode.specifier()
+	class Write implements Instruction{
 
 		public Write(final SamOp opcode, final int base, final int displacement){
 
@@ -1217,7 +1206,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			// TODO Auto-generated method stub
 			return null;
 		}
-	}*/
+	}
 
 	/** Skip instruction. Allocates memory. */
 	class Skip implements Instruction{
@@ -1393,7 +1382,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				}
 				return (opcode.samCodeString()+ mode.address(base, displacement) + ", " + temp );
 			}
-			return (opcode.samCodeString() + 'R' + reg + ", " + mode.address(base, displacement));
+			return (opcode.samCodeString() + "R" + reg + ", " + mode.address(base, displacement));
 		}
 
 		@Override
@@ -1449,13 +1438,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		}
 		
 		@Override
-		public String samCode() {
-			return (opcode.samCodeString() + "R" + reg + ", " + label);
-		}
-		
-		/**
-		 * instantiates the macc code once the offset of the label is known.
-		 */
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
 			setBits(maccCode, 27, 31, opcode.opCodeValue());
@@ -1463,7 +1445,16 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			setBits(maccCode, 20, 22, Mode.DMEM.samCode());
 			maccCode.set(16, 19, false);
 			setBits(maccCode, 0, 15, offset);
-			System.out.println(maccCode);
+		}
+
+		@Override
+		public String label() {
+			return label;
+		}
+		
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + "R" + reg + ", " + label);
 		}
 		
 		@Override
@@ -1475,12 +1466,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public int maccSize() {
 			return Mode.DMEM.bytesRequired();
 		}
-
-		@Override
-		public String label() {
-			return label;
-		}
-		
 	}
 	
 	class PushPopToStack implements Instruction{
@@ -1492,7 +1477,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			this.opcode = opcode;
 			this.reg = reg;
 		}
-
 
 		@Override
 		public BitSet maccCode() {
@@ -1524,7 +1508,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			return opcode.samCodeString()+ "R" + reg +", " + 2047;
 		}
 	}
-	
 	
 	class JumpSubRoutine implements Instruction{
 
