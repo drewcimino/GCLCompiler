@@ -1130,7 +1130,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 	
 	/** Label instruction. Has no output in macc. */
-	class Label implements Instruction{//TODO if we want to get really picky, there's a limitation to what constitutes a legal label. check sam3doc.txt @ LABEL
+	class Label implements Instruction{//TODO if we want to get really picky, there's a limitation to what constitutes a legal label. check sam3doc.txt @ LABEL. this might not really be an issue since we're creating our own labels.
 
 		private SamOp opcode;
 		private String name;
@@ -1290,29 +1290,30 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	class StringDirective implements Instruction{
 
 		private SamOp opcode;
-		private String directive;
+		private String samString;
+		private String maccString;
 
 		public StringDirective(final SamOp opcode, String directive){
 			this.opcode = opcode;
-			directive = directive.substring(1, directive.length() - 1).replaceAll("::", ":").replaceAll(":'", "'").replaceAll(":\"", "\"");
-			this.directive = directive;
+			this.samString = directive;
+			this.maccString = directive.substring(1, directive.length() - 1).replaceAll("::", ":").replaceAll(":'", "'").replaceAll(":\"", "\"");
 		}
 
 		@Override
 		public BitSet maccCode() {
-			BitSet maccCode = new BitSet((directive.length()+1)*8);
-			setBits(maccCode, directive);
+			BitSet maccCode = new BitSet((maccString.length()+1)*8);
+			setBits(maccCode, maccString);
 			return maccCode;
 		}
 
 		@Override
 		public int maccSize() {
-			return directive.length()+1;// in order to make macc string null terminated.
+			return maccString.length()+1;// in order to make macc string null terminated.
 		}
 
 		@Override
 		public String samCode() {
-			return (opcode.samCodeString() + directive);
+			return (opcode.samCodeString() + samString);
 		}
 	}
 
