@@ -324,25 +324,18 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/**
-	 * Replaces labels with offsets and then writes the codefile and objfile.
+	 * Replaces labels with offsets and then writes codefile and objfile.
 	 */
 	public void writeInstructionList(){
 		defineLabelOffsets();
-		for(Instruction instruction : instructionList){
-			codefile.println(instruction.samCode());
-			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
-			catch (IOException e) { e.printStackTrace(); }
-		}
+		defineLabelReferenceAndOutput();
 	}
 	
 	/**
-	 * Finds the memory offsets of labels
+	 * first pass: defines memory offsets of labels
 	 */
 	private void defineLabelOffsets(){
 		Integer instructionOffset = 0;
-		Integer offset = null;
-		
-		// first pass: record label offsets.
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof Label){
 				Label labelInstruction = (Label)instruction;
@@ -350,8 +343,13 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 			instructionOffset += instruction.maccSize();
 		}
-		
-		// second pass: define label reference offsets.
+	}
+	
+	/**
+	 * second pass: define label reference offsets and output code.
+	 */
+	private void defineLabelReferenceAndOutput(){
+		Integer offset = null;
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof LabelReference){
 				LabelReference labelInstruction = (LabelReference) instruction;
@@ -363,6 +361,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 					labelInstruction.defineOffset(offset);
 				}
 			}
+			codefile.println(instruction.samCode());
+			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
+			catch (IOException e) { e.printStackTrace(); }
 		}
 	}
 
