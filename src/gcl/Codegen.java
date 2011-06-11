@@ -35,12 +35,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	public void closeObjfile() {
-		try {
-			objfile.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		try { objfile.close(); }
+		catch (IOException e) {	e.printStackTrace(); }
 	}
 
 	/**
@@ -338,19 +334,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			catch (IOException e) { e.printStackTrace(); }
 		}
 	}
-
-	/**
-	 * @return Returns the first [maccSize] bytes of [bits] as a byte array.
-	 */
-	public static byte[] toByteArray(BitSet bits, int maccSize){
-	    byte[] bytes = new byte[maccSize];
-	    for (int i = 0; i < (maccSize*8); i++){
-	        if (bits.get(i)){
-	            bytes[maccSize-(i/8)-1] |= 1<<(i%8);
-	        }
-	    }
-	    return bytes;
-	}
 	
 	/**
 	 * Finds the memory offsets of labels
@@ -449,7 +432,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		gen2Address(opcode, reg, l.mode, l.base, l.displacement);
 	}
 
-	/**
+	/** TODO replace all immediate address usages of this method. ie: INC R2 5 OR  IA R3 #22. Hint: look for the '#' character. or check the call tree for this method.
 	 * Generate a two address instruction with a DMEM (label) for the second
 	 * operand.
 	 *
@@ -992,6 +975,28 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	//------------------------------- Honors Code ------------------------------------
+	
+	// Utility functions for operations with BitSets
+	
+	/**
+	 * Converts BitSets to byte arrays
+	 * 
+	 * @param bits the BitSet to convert
+	 * @param maccSize the number of bytes to convert of bits.
+	 * 
+	 * @return Returns the first <b>[maccSize]</b> bytes of <b>[bits]</b> as a byte array.<br/>
+	 * (arranged from the end of the array)
+	 */
+	private static byte[] toByteArray(BitSet bits, int maccSize){
+	    byte[] bytes = new byte[maccSize];
+	    for (int i = 0; i < (maccSize*8); i++){
+	        if (bits.get(i)){
+	            bytes[maccSize-(i/8)-1] |= 1<<(i%8);
+	        }
+	    }
+	    return bytes;
+	}
+	
 	/**
 	 * Assigns the low bits of value to bits on the range [fromBit, toBit].
 	 *
@@ -1001,14 +1006,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param value integer value to be assigned to that range.
 	 */
 	private static void setBits(BitSet bits, int fromBit, int toBit, int value){
-		// low bits of value to low bits of from--to. value >= 0
 		for(int i = fromBit; i <= toBit; ++i){
-			if(value % 2 == 1){
-				bits.set(i);
-			}
-			else {
-				bits.clear(i); // in case bits wasn't "zeros" to start
-			}
+			bits.set(i, (value % 2 == 1));
 			value = value >> 1;
 		}
 	}
@@ -1020,53 +1019,56 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param value String value to be assigned to bits.
 	 */
 	private static void setBits(BitSet bits, String value){
-		
 		for(int i = 0; i < value.length(); i++){
 			setBits(bits, i*8, (i+1)*8, value.charAt(value.length()-i-1));
 		}
 	}
 
 	/**
-	 * @param code short integer value.
-	 * @return 16 bit BitSet representation.
+	 * Assigns values for a one word instruction.<br/><br/>
+	 * Sets bits 15-11 with the first 5 bits of opcode.<br/>
+	 * Sets bits 10-7 with the first 4 bits of regOne.<br/>
+	 * Sets bits 6-4 with the first 3 bits of mode.<br/>
+	 * Sets bits 3-0 with the first 4 bits of regTwo.
+	 * 
+	 * @param bits BitSet to be modified.
+	 * @param opcode integer code for the operation.
+	 * @param regOne number of the first register operand.
+	 * @param mode integer code for the mode of the second operand.
+	 * @param regTwo number of the second register operand.
 	 */
-	private static BitSet toBitSet(short code){
-		BitSet result = new BitSet(16);
-		for(int i = 0; i < 16; ++i){
-			if(Math.abs(code % 2) == 1){
-				result.set(i);
-			}
-			code = (short)(code >> 1);
-		}
-		return result;
+	private static void setBits(BitSet bits, final int opcode, final int regOne, final int mode, final int regTwo){
+		setBits(bits, 11, 15, opcode);
+		setBits(bits, 7, 10, mode);
+		setBits(bits, 4, 6, mode);
+		setBits(bits, 0, 3, regTwo);
 	}
-
+	
 	/**
-	 * @param set bit set whose string representation you want.
-	 * @return String representation of a bit set.
+	 * Assigns values for a two word instruction.<br/><br/>
+	 * Sets bits 31-27 with the first 5 bits of opcode.<br/>
+	 * Sets bits 26-23 with the first 4 bits of regOne.<br/>
+	 * Sets bits 22-20 with the first 3 bits of mode.<br/>
+	 * Sets bits 19-16 with the first 4 bits of regTwo.<br/>
+	 * Sets bits 15-0 with the first 16 bits of offset.
+	 * 
+	 * @param bits BitSet to be modified.
+	 * @param opcode integer code for the operation.
+	 * @param regOne number of the first register operand.
+	 * @param mode integer code for the mode of the second operand.
+	 * @param regTwo number of the second register operand.
+	 * @param offset the value of the second word of the instruction.
 	 */
-	private static String bitString(BitSet set){ // 16 bit sets only
-		String result = "";
-		for(int i = 15; i >=0; --i){
-			if(set.get(i)){
-				result += "1";
-			}
-			else{
-				result += "0";
-			}
-		}
-		return result;
+	private static void setBits(BitSet bits, final int opcode, final int regOne, final int mode, final int regTwo, final int offset){
+		setBits(bits, 27, 31, opcode);
+		setBits(bits, 23, 26, mode);
+		setBits(bits, 20, 22, mode);
+		setBits(bits, 16, 19, regTwo);
+		setBits(bits, 0, 15, offset);
 	}
-
-	/**
-	 * @param set bit set whose short integer representation you want.
-	 * @return short integer representation of a bit set.
-	 */
-	private static short fromBitSet(BitSet set){
-		String value = bitString(set);
-		return (short)Integer.parseInt(value, 2); // decode in base 2
-	}
-
+	
+	// Classes to describe the different sam/ mac instructions.
+	
 	/** Instruction in sam or macc. */
 	interface Instruction {
 
@@ -1086,11 +1088,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public abstract int maccSize();
 	}
 	
-	/** Instruction which references a label and needs to defineOffset in the second pass. */
+	/** Instruction which references a label.<br/>
+	 *  Must define an offset in the second pass. */
 	interface LabelReference{
 		
 		/**
-		 * instantiates the macc code once the offset of the label is known.
+		 * defines the macc code once the offset of the label is known.
 		 */
 		public void defineOffset(final int offset);
 		
@@ -1124,50 +1127,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			return ("% " + message);
 		}
 	}
-
-	/** Jump instruction. Must define offset in a second pass. */
-	class Jump implements Instruction, LabelReference{
-
-		private SamOp opcode;
-		private String label;
-		private BitSet maccCode;
-
-		public Jump(SamOp opcode, String label){
-			this.opcode = opcode;
-			this.label = label;
-		}
-
-		@Override
-		public void defineOffset(int offset){
-			maccCode = new BitSet(32);
-			maccCode.set(20);
-			setBits(maccCode, 27, 31, opcode.opCodeValue());
-			setBits(maccCode, 23, 26, opcode.specifier());
-			setBits(maccCode, 0, 15, offset);
-		}
-		@Override
-		public String label(){
-			return label;
-		}
-
-		@Override
-		public BitSet maccCode() {
-			return maccCode;
-		}
-
-		@Override
-		public int maccSize() {
-			return 4;
-		}
-
-		@Override
-		public String samCode() {
-			return (opcode.samCodeString() + label);
-		}
-	}
-
+	
 	/** Label instruction. Has no output in macc. */
-	class Label implements Instruction{
+	class Label implements Instruction{//TODO if we want to get really picky, there's a limitation to what constitutes a legal label. check sam3doc.txt @ LABEL
 
 		private SamOp opcode;
 		private String name;
@@ -1194,6 +1156,46 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public String samCode() {
 			return opcode.samCodeString() + name;
+		}
+	}
+	
+	/** Jump instruction.<br/>
+	 *  Must define an offset in the second pass. */
+	class Jump implements Instruction, LabelReference{
+
+		private SamOp opcode;
+		private String label;
+		private BitSet maccCode;
+
+		public Jump(SamOp opcode, String label){
+			this.opcode = opcode;
+			this.label = label;
+		}
+
+		@Override
+		public void defineOffset(int offset){
+			maccCode = new BitSet(32);
+			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), 0, 0, offset);
+			maccCode.set(20);// this can be done by setting that second zero up there to the right number, but this works too.
+		}
+		@Override
+		public String label(){
+			return label;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 4;
+		}
+
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + label);
 		}
 	}
 
@@ -1231,7 +1233,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		private int allocatedSize;
 
 		/**
-		 * @param allocatedSize in 2 word intervals.
+		 * @param allocatedSize in 2 word (4 byte) intervals.
 		 */
 		public Skip(final SamOp opcode, final int allocatedSize){
 			this.opcode = opcode;
@@ -1325,8 +1327,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public BitSet maccCode() {
 			BitSet maccCode = new BitSet(16);
-			setBits(maccCode, 11, 15, opcode.opCodeValue());
-			setBits(maccCode, 7, 10, opcode.specifier());
+			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), 0, 0);
 			return maccCode;
 		}
 
@@ -1363,35 +1364,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public BitSet maccCode() {
-			//Might not need the displacement, meaning different size and bitset
-			BitSet maccCode;
-			BitSet instructionBitSet = new BitSet(16);
-			BitSet displacementBitSet = new BitSet(16);
-			maccCode = new BitSet(mode.bytesRequired()*8);
-
-			setBits(instructionBitSet, 11, 15, opcode.opCodeValue());
-			setBits(instructionBitSet, 7, 10, opcode.specifier());
-			setBits(instructionBitSet, 4, 6, mode.samCode());
-			setBits(instructionBitSet, 0, 3, base);
-			
-			setBits(displacementBitSet, 0, 15, (short) displacement);
-			
-			
-			if (mode.bytesRequired() > 2){
-				//KEITH - iterates both the instruction and displacement bitset and puts them in the correct location the maccCode
-				//this is Bergin's fault
-				for (int i=0; i<16; i++)
-					maccCode.set(i, displacementBitSet.get(i));
-				for (int i=0; i<16; i++)
-					maccCode.set(i+16, instructionBitSet.get(i));
-				
-				return maccCode;
-			}
-			else
-			{
-				return instructionBitSet;
-
-			}
+			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
+			// if displacement isn't needed, it won't be output since maccSize will return 2.
+			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), mode.samCode(), base, displacement);
+			return maccCode;
 		}
 
 		@Override
@@ -1431,34 +1407,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public BitSet maccCode() {
-			//Might not need the displacement, meaning different size and bitset
-			BitSet maccCode;
-			BitSet instructionBitSet = new BitSet(16);
-			BitSet displacementBitSet = new BitSet(16);
-			maccCode = new BitSet(mode.bytesRequired()*8);
-			
-			setBits(instructionBitSet, 11, 15, opcode.opCodeValue());
-			setBits(instructionBitSet, 7, 10, reg);
-			setBits(instructionBitSet, 4, 6, mode.samCode());
-			setBits(instructionBitSet, 0, 3, base);
-			
-			setBits(displacementBitSet, 0, 15, (short) displacement);
-			
-			
-			if (mode.bytesRequired() > 2){
-				//KEITH - iterates both the instruction and displacement bitset and puts them in the correct location the maccCode
-				//this is Bergin's fault
-				for (int i=0; i<16; i++)
-					maccCode.set(i, displacementBitSet.get(i));
-				for (int i=0; i<16; i++)
-					maccCode.set(i+16, instructionBitSet.get(i));
-				return maccCode;
-			}
-			else
-			{
-				return instructionBitSet;
-
-			}
+			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
+			// if displacement isn't needed, it won't be output since maccSize will return 2.
+			setBits(maccCode, opcode.opCodeValue(), reg, mode.samCode(), base, displacement);
+			return maccCode;
 		}
 
 		@Override
@@ -1467,7 +1419,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		}
 	}
 
-	/** Two Address instruction that makes use of a label. */
+	/** Two Address instruction that makes use of a label.<br/>
+	 *  Must define an offset in the second pass. */
 	class TwoAddressLabel implements Instruction, LabelReference{
 		
 		private SamOp opcode;
@@ -1485,12 +1438,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
-			setBits(maccCode, 0, 15, offset);// offset
-			maccCode.set(16, 20, false);// 2nd register
-			setBits(maccCode, 20, 22, Mode.DMEM.samCode());// mode 
-			setBits(maccCode, 23, 26, reg);// 1st register
-			setBits(maccCode, 27, 31, opcode.opCodeValue());// operation
-			
+			setBits(maccCode, opcode.opCodeValue(), reg, Mode.DMEM.samCode(), 0, offset);
 		}
 
 		@Override
@@ -1536,11 +1484,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
  				   modes somehow, but it doesn't appear to
  			3-0    all zeros
 			*/
-			setBits(maccCode, 27, 31, opcode.opCodeValue());
-			setBits(maccCode, 23, 26, reg);
-			setBits(maccCode, 20, 22, opcode.specifier());
-			setBits(maccCode, 0, 15, 2047);
-
+			setBits(maccCode, opcode.opCodeValue(), reg, opcode.specifier(), 0, 2047);
 			return maccCode;
 		}
 
