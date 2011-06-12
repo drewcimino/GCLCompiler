@@ -2120,7 +2120,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param control expression over which the loop iterates. Must be RangeType.
 	 * @return ForRecord entry with a counter and a label for this statement.
 	 **************************************************************************/
-	ForRecord startForall(VariableExpression control) {//TODO can we use control as the object directly?
+	ForRecord startForall(VariableExpression control) {
 		
 		RangeType bounds = control.type().expectRangeType(err);
 		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.loadRegister(control), DIRECT);
@@ -2141,11 +2141,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void endForall(final ForRecord entry) {
 		
-		int controlRegister = codegen.loadRegister(entry.control());
+		int controlReg = codegen.loadRegister(entry.control());
 		// Increment the control.
-		codegen.gen2Address(IA, controlRegister, new Location(Mode.IMMED, UNUSED, 1));
+		codegen.gen2Address(IA, controlReg, new Location(Mode.IMMED, UNUSED, 1));
 		// Test control in bounds.
-		codegen.gen2Address(IC, controlRegister, new Location(Mode.IMMED, UNUSED, entry.bounds().upperBound()));
+		codegen.gen2Address(IC, controlReg, new Location(Mode.IMMED, UNUSED, entry.bounds().upperBound()));
 		// Jump to top.
 		codegen.genJumpLabel(JLE, 'F', entry.forLabel());
 		// Free control register.
@@ -2362,7 +2362,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as upper bound");
 		}
 		// complain lower > upper
-		if(lowerBound.value() > upperBound.value()){//TODO are ranges allowed to be =? [1..1]
+		if(lowerBound.value() > upperBound.value()){
 			valid = false;
 			err.semanticError(GCLError.ILLEGAL_RANGE, "lower bound (" + lowerBound.value() + ")cannot be greater than upper bound (" + upperBound.value() + ")");
 		}

@@ -328,9 +328,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void writeFiles(final Instruction instruction) {
 		instructionList.add(instruction);
-//		CompilerOptions.listCode("$ " + instruction.samCode()); TODO remove next two after debug
-		try{ CompilerOptions.listCode("$ " + instruction.samCode() + "\n" + instruction.maccCode().toString()); }
-		catch(NullPointerException e) { CompilerOptions.listCode("$ " + instruction.samCode() + "\n{Not Yet Defined}"); }
+		CompilerOptions.listCode("$ " + instruction.samCode());
 	}
 
 	/**
@@ -983,7 +981,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/**
-	 * Assigns values for a one word instruction.<br/><br/>
+	 * Assigns values for one word instructions.<br/><br/>
 	 * Sets bits 15-11 with the first 5 bits of opcode.<br/>
 	 * Sets bits 10-7 with the first 4 bits of regOne.<br/>
 	 * Sets bits 6-4 with the first 3 bits of mode.<br/>
@@ -1003,7 +1001,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 	
 	/**
-	 * Assigns values for a two word instruction.<br/><br/>
+	 * Assigns values for two word instructions.<br/><br/>
 	 * Sets bits 31-27 with the first 5 bits of opcode.<br/>
 	 * Sets bits 26-23 with the first 4 bits of regOne.<br/>
 	 * Sets bits 22-20 with the first 3 bits of mode.<br/>
@@ -1217,7 +1215,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/** String directive instruction. */
-	class StringDirective implements Instruction{
+	class StringDirective implements Instruction{ // TODO fix string directives. probably a macc length issue.
 
 		private SamOp opcode;
 		private String samString;
@@ -1226,7 +1224,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public StringDirective(final SamOp opcode, String directive){
 			this.opcode = opcode;
 			this.samString = directive;
-			this.maccString = directive.substring(1, directive.length() - 1).replaceAll("::", ":").replaceAll(":\"", "\"").replaceAll(":'", "'");//TODO is this the right order to replace them in?
+			this.maccString = directive.substring(1, directive.length() - 1).replaceAll("::", ":").replaceAll(":\"", "\"").replaceAll(":'", "'");
 		}
 
 		@Override
@@ -1297,7 +1295,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public BitSet maccCode() {
 			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
-			// if displacement isn't needed, it won't be output since maccSize will return 2.
 			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), mode.samCode(), base, displacement);
 			return maccCode;
 		}
@@ -1340,7 +1337,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public BitSet maccCode() {
 			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
-			// if displacement isn't needed, it won't be output since maccSize will return 2.
 			setBits(maccCode, opcode.opCodeValue(), reg, mode.samCode(), base, displacement);
 			return maccCode;
 		}
