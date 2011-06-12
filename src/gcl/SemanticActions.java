@@ -2141,11 +2141,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void endForall(final ForRecord entry) {
 		
+		int controlRegister = codegen.loadRegister(entry.control());
 		// Increment the control.
-		//codegen.gen2Address(INC, entry.control().offset(), "1"); TODO Check if the next line is a valid replacement.
-		codegen.gen2Address(INC, 1, codegen.buildOperands(entry.control()));
+		codegen.gen2Address(IA, controlRegister, new Location(Mode.IMMED, UNUSED, 1));
 		// Test control in bounds.
-		codegen.gen2Address(IC, entry.control().offset(), new Location(Mode.IMMED, UNUSED, entry.bounds().upperBound()));
+		codegen.gen2Address(IC, controlRegister, new Location(Mode.IMMED, UNUSED, entry.bounds().upperBound()));
 		// Jump to top.
 		codegen.genJumpLabel(JLE, 'F', entry.forLabel());
 		// Free control register.

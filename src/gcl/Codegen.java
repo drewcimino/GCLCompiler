@@ -328,6 +328,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void writeFiles(final Instruction instruction) {
 		instructionList.add(instruction);
+//		CompilerOptions.listCode("$ " + instruction.samCode()); TODO remove next two after debug
 		try{ CompilerOptions.listCode("$ " + instruction.samCode() + "\n" + instruction.maccCode().toString()); }
 		catch(NullPointerException e) { CompilerOptions.listCode("$ " + instruction.samCode() + "\n{Not Yet Defined}"); }
 	}
