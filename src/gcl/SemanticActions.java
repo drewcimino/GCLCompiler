@@ -402,15 +402,21 @@ abstract class BooleanOperator extends Operator {
 class StringConstant extends SemanticItem implements ConstantLike {
 	
 	private String samString;
+	private String maccString;
 	private int size;
 	
 	public StringConstant(String gclString) {
 		samString = toSamString(gclString);
+		maccString = toMaccString(gclString);
 		size = 2*(gclString.length()/2);
 	}
 	
 	public String samString(){
 		return samString;
+	}
+	
+	public String maccString(){
+		return maccString;
 	}
 	
 	public int size(){
@@ -422,6 +428,10 @@ class StringConstant extends SemanticItem implements ConstantLike {
 							   .replaceAll("\\\\", "\\")
 							   .replaceAll(":", "::")
 							   .replaceAll("\"", ":\"") + "\"";
+	}
+	
+	private final String toMaccString(String gclString){
+		return gclString.substring(1, gclString.length()-1);
 	}
 }
 

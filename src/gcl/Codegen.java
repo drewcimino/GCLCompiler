@@ -160,15 +160,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		return new Location(mode, base, displacement);
 	}
 	
-	//KEITH - these are the two things you added in
-	public void genPushPopToStack(final SamOp opcode) {
-		writeFiles(new PushPopToStack(opcode, STACK_POINTER));
-	}
-
-	public void genJumpSubroutine(int staticPointer, int label) {
-		writeFiles(new JumpSubRoutine(JSR, staticPointer, label));
-	}
-	
 	/**
 	 * Load a value into a register (or say which register if already loaded).
 	 *
@@ -408,30 +399,52 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param amount an integer in the range 1..16
 	 */
 	public void genShiftInstruction(final SamOp opcode, final int reg, final int amount){
-		//FIX THIS LATER TODO
-		//writeFiles(new Directive(opcode, "R" + reg + ", " + amount));
+		writeFiles(new Shift(opcode, reg, amount));
 	}
 
-	/** Set a bit of a word corresponding to a register number.
-	 * @param reg the register to transform
-	 * @return an integer with one bit set
+	/** Set a bit of a word corresponding to a set of register numbers
+	 * @param regs a list of registers to transform.<br/> DO NOT REPEAT VALUES.
+	 * @return an integer with regs.length bits set
 	 */
-	private int regToBits(final int reg){
-		return (int)Math.pow(2, reg);
+	private int regsToBits(int...regs){
+		int result = 0;
+		for(int reg : regs){
+			result += (int)Math.pow(2, reg);
+		}
+		return result;
+	}
+	
+	/**
+	 * Pushes or Pops the contents of one or more registers onto the runtime stack
+	 * 
+	 * @param opcode PUSH or POP
+	 * @param regs a list of one or more registers to push or pop
+	 */
+	public void genPushPopRegisters(SamOp opcode, final int...regs){
+		writeFiles(new PushPop(opcode, STACK_POINTER, regsToBits(regs)));
+	}
+	
+	/**
+	 * TODO Pushes or Pops all registers.
+	 * 
+	 * @param opcode PUSH or POP
+	 */
+	public void genPushPopToStack(final SamOp opcode) {
+		genPushPopRegisters(opcode, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 	}
 
 	/** Push the contents of a register onto the runtime stack.
 	 * @param reg the register to push
 	 */
 	public void genPushRegister(final int reg){
-		genShiftInstruction(PUSH, STACK_POINTER, regToBits(reg));
+		genPushPopRegisters(PUSH, reg);
 	}
 
 	/** Pop the top of the runtime stack into a register.
 	 * @param reg the register to receive the top of stack
 	 */
 	public void genPopRegister(final int reg){
-		genShiftInstruction(POP, STACK_POINTER, regToBits(reg));
+		genPushPopRegisters(POP, reg);
 	}
 
 	/**
@@ -452,8 +465,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param offset the integer value of the label
 	 */
 	public void genLabel(final char prefix, final int offset) {
-		String label = prefix + String.valueOf(offset);
-		writeFiles(new Label(LABEL_DIRECTIVE, label));
+		writeFiles(new Label(LABEL_DIRECTIVE, prefix + String.valueOf(offset)));
 	}
 
 	/**
@@ -465,7 +477,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		writeFiles(new IntDirective(INT_DIRECTIVE, value));
 	}
 
-	public void genStringDirective(final String value) {
+	/**
+	 * Generate a SAM pseudo op STRING
+	 *
+	 * @param value the value of the string.
+	 */
+	public void genStringDirective(final StringConstant value) {
 		writeFiles(new StringDirective(STRING_DIRECTIVE, value));
 	}
 
@@ -476,6 +493,25 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void genSkipDirective(final int value) {
 		writeFiles(new Skip(SKIP_DIRECTIVE, value));
+	}
+	
+	/**
+	 * Comment the sam code arbitrarily -- usually for debugging
+	 *
+	 * @param comment the comment
+	 */
+	public void genCodeComment(final String comment) {
+		writeFiles(new Comment(comment));
+	}
+
+	/**
+	 * TODO Stores current program counter and jumps to label.
+	 * 
+	 * @param staticPointer saved previous location before jump.
+	 * @param label name of the label to jump to.
+	 */
+	public void genJumpSubroutine(int staticPointer, final String label) {
+		writeFiles(new JumpSubRoutine(JSR, staticPointer, label));
 	}
 
 	/** Generate the startup allocation code */
@@ -493,15 +529,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		genLabel('V', 1);
 		genSkipDirective(variableBlockSize());
 		flushcode();
-	}
-
-	/**
-	 * Comment the code arbitrarily -- usually for debugging
-	 *
-	 * @param comment the comment
-	 */
-	public void genCodeComment(final String comment) {
-		writeFiles(new Comment(comment));
 	}
 
 	/** Save the current register set and begin with a fresh one.
@@ -905,7 +932,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				}
 				else {
 					StringConstant constant = (StringConstant) temp;
-					codegen.genStringDirective(constant.samString());
+					codegen.genStringDirective(constant);
 				}
 
 			}
@@ -1062,9 +1089,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	/** Comment instruction. Has no output in macc. */
 	class Comment implements Instruction{
 
-		private String message;
+		private final String message;
 
-		public Comment(String message){
+		public Comment(final String message){
 			this.message = message;
 		}
 
@@ -1087,8 +1114,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	/** Label instruction. Has no output in macc. */
 	class Label implements Instruction{
 
-		private SamOp opcode;
-		private String name;
+		private final SamOp opcode;
+		private final String name;
 
 		public Label(final SamOp opcode, final String name){
 			this.opcode = opcode;
@@ -1119,11 +1146,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 *  Must define an offset in the second pass. */
 	class Jump implements Instruction, LabelReference{
 
-		private SamOp opcode;
-		private String label;
+		private final SamOp opcode;
+		private final String label;
 		private BitSet maccCode;
 
-		public Jump(SamOp opcode, String label){
+		public Jump(final SamOp opcode, final String label){
 			this.opcode = opcode;
 			this.label = label;
 		}
@@ -1158,8 +1185,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	/** Skip instruction. Allocates memory. */
 	class Skip implements Instruction{
 
-		private SamOp opcode;
-		private int allocatedSize;
+		private final SamOp opcode;
+		private final int allocatedSize;
 
 		/**
 		 * @param allocatedSize in 2 word (4 byte) intervals.
@@ -1188,8 +1215,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	/** Int directive instruction. */
 	class IntDirective implements Instruction{
 
-		private SamOp opcode;
-		private int directive;
+		private final SamOp opcode;
+		private final int directive;
 		
 		public IntDirective(final SamOp opcode, final int directive){
 			this.opcode = opcode;
@@ -1215,40 +1242,69 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/** String directive instruction. */
-	class StringDirective implements Instruction{ // TODO fix string directives. probably a macc length issue.
+	class StringDirective implements Instruction{
 
-		private SamOp opcode;
-		private String samString;
-		private String maccString;
+		private final SamOp opcode;
+		private final StringConstant value;
 
-		public StringDirective(final SamOp opcode, String directive){
+		public StringDirective(final SamOp opcode, final StringConstant value){
 			this.opcode = opcode;
-			this.samString = directive;
-			this.maccString = directive.substring(1, directive.length() - 1).replaceAll("::", ":").replaceAll(":\"", "\"").replaceAll(":'", "'");
+			this.value = value;
 		}
 
 		@Override
 		public BitSet maccCode() {
-			BitSet maccCode = new BitSet((maccString.length()+1)*8);
-			setBits(maccCode, maccString);
+			BitSet maccCode = new BitSet(value.size()*8);
+			setBits(maccCode, value.maccString());
 			return maccCode;
 		}
 
 		@Override
 		public int maccSize() {
-			return maccString.length()+1;// in order to make macc string null terminated.
+			return value.size();
 		}
 
 		@Override
 		public String samCode() {
-			return (opcode.samCodeString() + samString);
+			return (opcode.samCodeString() + value.samString());
+		}
+	}
+	
+	/** Shift instructions. */
+	class Shift implements Instruction{
+
+		private final SamOp opcode;
+		private final int reg;
+		private final int amount;
+		
+		public Shift(final SamOp opcode, final int reg, final int amount){
+			this.opcode = opcode;
+			this.reg = reg;
+			this.amount = amount;
+		}
+		
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(16);
+			setBits(maccCode, opcode.opCodeValue(), reg, opcode.specifier(), amount);
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString() + "R" + reg + ", " + amount;
 		}
 	}
 
 	/** Instruction with zero addresses. */
 	class ZeroAddress implements Instruction{
 
-		private SamOp opcode;
+		private final SamOp opcode;
 
 		public ZeroAddress(final SamOp opcode){
 			this.opcode = opcode;
@@ -1275,10 +1331,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	/** Instruction with one address. */
 	class OneAddress implements Instruction{
 
-		private SamOp opcode;
-		private Mode mode;
-		private int base;
-		private int displacement;
+		private final SamOp opcode;
+		private final Mode mode;
+		private final int base;
+		private final int displacement;
 
 		public OneAddress(final SamOp opcode, final Mode mode, final int base, final int displacement){
 			this.opcode = opcode;
@@ -1308,11 +1364,11 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	/** Instruction with two addresses. */
 	class TwoAddress implements Instruction{
 
-		private SamOp opcode;
-		private int reg;
-		private Mode mode;
-		private int base;
-		private int displacement;
+		private final SamOp opcode;
+		private final int reg;
+		private final Mode mode;
+		private final int base;
+		private final int displacement;
 
 		public TwoAddress(final SamOp opcode, final int reg, final Mode mode, final int base, int displacement){
 			this.opcode = opcode;
@@ -1325,11 +1381,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public String samCode(){
 			if(opcode == Mnemonic.INC || opcode == Mnemonic.DEC){
-				int temp = reg;
-				if( reg == 0){
-					temp = 16;
-				}
-				return (opcode.samCodeString()+ mode.address(base, displacement) + ", " + temp );
+				return (opcode.samCodeString()+ mode.address(base, displacement) + ", " + ((reg == 0) ? 16 : reg) );
 			}
 			return (opcode.samCodeString() + "R" + reg + ", " + mode.address(base, displacement));
 		}
@@ -1351,11 +1403,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 *  Must define an offset in the second pass. */
 	class TwoAddressLabel implements Instruction, LabelReference{
 		
-		private SamOp opcode;
-		private int reg;
-		private BitSet maccCode;
-		private String label;
-		
+		private final SamOp opcode;
+		private final int reg;
+		private final String label;
+		private BitSet maccCode;		
 		
 		public TwoAddressLabel(final SamOp opcode, final int reg, final String label){
 			this.opcode = opcode;
@@ -1390,29 +1441,23 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		}
 	}
 	
-	class PushPopToStack implements Instruction{
+	/** Push and Pop instructions. */
+	class PushPop implements Instruction{
 
-		private SamOp opcode;
-		private int reg;
+		private final SamOp opcode;
+		private final int reg;
+		private final int amount;
 
-		public PushPopToStack(final SamOp opcode, final int reg){
+		public PushPop(final SamOp opcode, final int reg, final int amount){
 			this.opcode = opcode;
 			this.reg = reg;
+			this.amount = amount;
 		}
 
 		@Override
 		public BitSet maccCode() {
 			BitSet maccCode = new BitSet(32);
-			
-			/*KEITH - PUSH and POP are really really weird, probably need to modify gen2address to make it work right
-			The bitset looks like this for them:
-			15-11  the 5 bit opcode
- 			10-7   the register
- 			6-4    the specifier (only uses 1 and 2, 0 if you count HALT, this may still represent
- 				   modes somehow, but it doesn't appear to
- 			3-0    all zeros
-			*/
-			setBits(maccCode, opcode.opCodeValue(), reg, opcode.specifier(), 0, 2047);
+			setBits(maccCode, opcode.opCodeValue(), reg, opcode.specifier(), 0, amount);
 			return maccCode;
 		}
 
@@ -1423,30 +1468,37 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public String samCode() {
-			return opcode.samCodeString()+ "R" + reg +", " + 2047;
+			return opcode.samCodeString() + "R" + reg + ", " + amount;
 		}
 	}
 	
-	class JumpSubRoutine implements Instruction{
+	/** JumpSubRoutine instruction. Jumps to a subroutine and returns. */
+	class JumpSubRoutine implements Instruction, LabelReference{
 
-		private SamOp opcode;
-		private int staticPointer;
-		private int label;
+		private final SamOp opcode;
+		private final int staticPointer;
+		private final String label;
+		private BitSet maccCode;
 
-		public JumpSubRoutine(final SamOp opcode, final int staticPointer, final int label){
+		public JumpSubRoutine(final SamOp opcode, final int staticPointer, final String label){
 			this.opcode = opcode;
 			this.staticPointer = staticPointer;
 			this.label = label;
 		}
 
+		@Override
+		public void defineOffset(int offset) {
+			maccCode = new BitSet(32);
+			setBits(maccCode, opcode.opCodeValue(), staticPointer, Mode.DMEM.samCode(), 0, offset);
+		}
+
+		@Override
+		public String label() {
+			return label;
+		}
 
 		@Override
 		public BitSet maccCode() {
-			
-			//KEITH - this code is all kinds of wrong, it looks like JSR does some kind of push or pop
-			//and I honeslty don't want to deal with it right now.
-			BitSet maccCode = new BitSet(32);
-
 			return maccCode;
 		}
 
@@ -1457,7 +1509,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public String samCode() {
-			return JSR.samCodeString() + 'R' + staticPointer + ", P" + label;
+			return JSR.samCodeString() + "R" + staticPointer + ", " + label;
 		}
 	}
 }
