@@ -159,53 +159,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		}
 		return new Location(mode, base, displacement);
 	}
-
-	//KEITH - you don't need this code
-	/**
-	 * Used to extract a component stored in a tuple.
-	 *
-	 * @param tupleExpression A tuple which contains the target component.
-	 * @param fieldName Identifier of the target member.
-	 * @return tupleExpression@fieldName
-	 */
-	/*public Expression extractTupleComponent(VariableExpression tupleExpression, Identifier fieldName){
-
-		TupleType tupleType = tupleExpression.type().expectTupleType(err);
-		TypeDescriptor fieldType;
-		int fieldInset;
-		try{
-			fieldType = tupleType.getType(fieldName);
-			fieldInset = tupleType.getInset(fieldName);
-		}
-		catch(NoSuchElementException e){
-			err.semanticError(GCLError.NAME_NOT_DEFINED);
-			return new ErrorExpression("$ Invalid tuple member identifier.");
-		}
-		catch(NullPointerException e){
-			err.semanticError(GCLError.NAME_NOT_DEFINED);
-			return new ErrorExpression("$ Invalid tuple member identifier.");
-		}
-
-		if(tupleExpression.case1()){
-			return new VariableExpression(fieldType, tupleExpression.semanticLevel(), tupleExpression.offset() + fieldInset, DIRECT);
-		}
-		if(tupleExpression.case2()){
-			int tupleAddressOffset = loadAddress(tupleExpression);
-			if(fieldInset != 0){
-				gen2Address(IA, tupleAddressOffset, "#" + fieldInset);
-			}
-			return new VariableExpression(fieldType, tupleExpression.semanticLevel(), tupleAddressOffset, INDIRECT);
-		}
-		if(tupleExpression.case3()){
-			int tupleAddressOffset = loadPointer(tupleExpression);
-			if(fieldInset != 0){
-				gen2Address(IA, tupleAddressOffset, "#" + fieldInset);
-			}
-			return new VariableExpression(fieldType, 0, tupleAddressOffset, INDIRECT);
-		}
-		err.semanticError(GCLError.ILLEGAL_TUPLE_ACCESS);
-		return new ErrorExpression("$ Unable to extract tuple component.");
-	}*/
 	
 	//KEITH - these are the two things you added in
 	public void genPushPopToStack(final SamOp opcode) {
@@ -350,6 +303,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void defineLabelReferenceAndOutput(){
 		Integer offset = null;
+		System.out.println(definedLabels);//TODO debug only
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof LabelReference){
 				LabelReference labelInstruction = (LabelReference) instruction;
@@ -362,6 +316,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				}
 			}
 			codefile.println(instruction.samCode());
+			//TODO next two lines are macc output.
 			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
 			catch (IOException e) { e.printStackTrace(); }
 		}
@@ -373,7 +328,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void writeFiles(final Instruction instruction) {
 		instructionList.add(instruction);
-		CompilerOptions.listCode("$ " + instruction.samCode());
+		try{ CompilerOptions.listCode("$ " + instruction.samCode() + "\n" + instruction.maccCode().toString()); }
+		catch(NullPointerException e) { CompilerOptions.listCode("$ " + instruction.samCode() + "\n{Not Yet Defined}"); }
 	}
 
 	/**
@@ -433,7 +389,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		gen2Address(opcode, reg, l.mode, l.base, l.displacement);
 	}
 
-	/** TODO replace all immediate address usages of this method. ie: INC R2 5 OR  IA R3 #22. Hint: look for the '#' character. or check the call tree for this method.
+	/**
 	 * Generate a two address instruction with a DMEM (label) for the second
 	 * operand.
 	 *
@@ -929,10 +885,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			if (displacement < 0) {
 				displacement = constantOffset;
 				storage.push(new SamConstant(displacement, semanticItem));
-				if (semanticItem instanceof Expression) { // assume integer or boolean constant
+				if (semanticItem instanceof Expression) { // integer or boolean constant
 					constantOffset += ((Expression) semanticItem).type().size();
 				}
-				else { // assume string constant
+				else { // string constant
 					constantOffset += ((StringConstant) semanticItem).size();
 				}
 
@@ -1040,7 +996,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private static void setBits(BitSet bits, final int opcode, final int regOne, final int mode, final int regTwo){
 		setBits(bits, 11, 15, opcode);
-		setBits(bits, 7, 10, mode);
+		setBits(bits, 7, 10, regOne);
 		setBits(bits, 4, 6, mode);
 		setBits(bits, 0, 3, regTwo);
 	}
@@ -1062,7 +1018,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private static void setBits(BitSet bits, final int opcode, final int regOne, final int mode, final int regTwo, final int offset){
 		setBits(bits, 27, 31, opcode);
-		setBits(bits, 23, 26, mode);
+		setBits(bits, 23, 26, regOne);
 		setBits(bits, 20, 22, mode);
 		setBits(bits, 16, 19, regTwo);
 		setBits(bits, 0, 15, offset);
@@ -1130,7 +1086,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 	
 	/** Label instruction. Has no output in macc. */
-	class Label implements Instruction{//TODO if we want to get really picky, there's a limitation to what constitutes a legal label. check sam3doc.txt @ LABEL. this might not really be an issue since we're creating our own labels.
+	class Label implements Instruction{
 
 		private SamOp opcode;
 		private String name;
@@ -1197,33 +1153,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public String samCode() {
 			return (opcode.samCodeString() + label);
-		}
-	}
-
-	/** Write instruction. */
-	//Writes are one address or zero address instructions I believe - Allon: they use opcode.specifier()
-	class Write implements Instruction{
-
-		public Write(final SamOp opcode, final int base, final int displacement){
-
-		}
-
-		@Override
-		public BitSet maccCode() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
-		public int maccSize() {
-			// TODO Auto-generated method stub
-			return 0;
-		}
-
-		@Override
-		public String samCode() {
-			// TODO Auto-generated method stub
-			return null;
 		}
 	}
 
@@ -1296,7 +1225,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public StringDirective(final SamOp opcode, String directive){
 			this.opcode = opcode;
 			this.samString = directive;
-			this.maccString = directive.substring(1, directive.length() - 1).replaceAll("::", ":").replaceAll(":'", "'").replaceAll(":\"", "\"");
+			this.maccString = directive.substring(1, directive.length() - 1).replaceAll("::", ":").replaceAll(":\"", "\"").replaceAll(":'", "'");//TODO is this the right order to replace them in?
 		}
 
 		@Override

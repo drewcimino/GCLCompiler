@@ -4,11 +4,13 @@ package gcl;
 //TODO Deal with the runtime errors in 10_1 (there should only be 1 in the result file).. likewise for 4_1
 import gcl.Codegen.ConstantLike;
 import gcl.Codegen.Location;
+import gcl.Codegen.Mode;
 import gcl.SemanticActions.GCLErrorStream;
 
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.io.PrintWriter;
 
 //-------------------- Semantic Records ---------------------
@@ -403,7 +405,7 @@ class StringConstant extends SemanticItem implements ConstantLike {
 	private int size;
 	
 	public StringConstant(String gclString) {
-		samString = convertToSamString(gclString);
+		samString = toSamString(gclString);
 		size = 2*(gclString.length()/2);
 	}
 	
@@ -415,7 +417,7 @@ class StringConstant extends SemanticItem implements ConstantLike {
 		return size;
 	}
 	
-	private final String convertToSamString(String gclString){
+	private final String toSamString(String gclString){
 		return "\"" + gclString.substring(1, gclString.length()-1)
 							   .replaceAll("\\\\", "\\")
 							   .replaceAll(":", "::")
@@ -2123,7 +2125,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		RangeType bounds = control.type().expectRangeType(err);
 		VariableExpression forCounter = new VariableExpression(bounds.baseType(), codegen.loadRegister(control), DIRECT);
 		// Initialize the control.
-		codegen.gen2Address(LD, forCounter.offset(), "#" + bounds.lowerBound());
+		codegen.gen2Address(LD, forCounter.offset(), new Location(Mode.IMMED, UNUSED, bounds.lowerBound()));
 		// Label top of loop.
 		int forLabel = codegen.getLabel();
 		codegen.genLabel('F', forLabel);
@@ -2143,7 +2145,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		//codegen.gen2Address(INC, entry.control().offset(), "1"); TODO Check if the next line is a valid replacement.
 		codegen.gen2Address(INC, 1, codegen.buildOperands(entry.control()));
 		// Test control in bounds.
-		codegen.gen2Address(IC, entry.control().offset(), "#" + entry.bounds().upperBound());
+		codegen.gen2Address(IC, entry.control().offset(), new Location(Mode.IMMED, UNUSED, entry.bounds().upperBound()));
 		// Jump to top.
 		codegen.genJumpLabel(JLE, 'F', entry.forLabel());
 		// Free control register.
@@ -2410,14 +2412,14 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 				if(arrayExpression.case2()){
 					int arrayAddressOffset = codegen.loadAddress(arrayExpression);
 					if(inset != 0){ 
-						codegen.gen2Address(IA, arrayAddressOffset, "#" + inset);
+						codegen.gen2Address(IA, arrayAddressOffset, new Location(Mode.IMMED, UNUSED, inset));
 					}
 					return new VariableExpression(arrayType.componentType(), arrayExpression.semanticLevel(), arrayAddressOffset, INDIRECT);
 				}
 				if(arrayExpression.case3()){
 					int arrayAddressOffset = codegen.loadPointer(arrayExpression);
 					if(inset != 0){ 
-						codegen.gen2Address(IA, arrayAddressOffset, "#" + inset);
+						codegen.gen2Address(IA, arrayAddressOffset, new Location(Mode.IMMED, UNUSED, inset));
 					}
 					return new VariableExpression(arrayType.componentType(), 0, arrayAddressOffset, INDIRECT);
 				}
@@ -2432,7 +2434,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 				codegen.gen2Address(TRNG, subscriptRegister, arrayType.subscriptType().location());
 				// inset value (offset is stored in arrayRegister)
 				codegen.gen2Address(IS, subscriptRegister, arrayType.subscriptType().location());
-				codegen.gen2Address(IM, subscriptRegister, "#" + arrayType.componentType().size());
+				codegen.gen2Address(IM, subscriptRegister, new Location(Mode.IMMED, UNUSED, arrayType.componentType().size()));
 				int arrayRegister = codegen.loadAddress(arrayExpression);
 				codegen.gen2Address(IA, arrayRegister, DREG, subscriptRegister, UNUSED);
 				codegen.freeTemp(DREG, subscriptRegister);
@@ -2453,8 +2455,41 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression tupleComponent(VariableExpression tupleExpression, Identifier fieldName){
 		
-		return new ErrorExpression("");
-		//return codegen.extractTupleComponent(tupleExpression, fieldName); TODO why don't we need extract tuple component?
+		TupleType tupleType = tupleExpression.type().expectTupleType(err);
+		TypeDescriptor fieldType;
+		int fieldInset;
+		try{
+			fieldType = tupleType.getType(fieldName);
+			fieldInset = tupleType.getInset(fieldName);
+		}
+		catch(NoSuchElementException e){
+			err.semanticError(GCLError.NAME_NOT_DEFINED);
+			return new ErrorExpression("$ Invalid tuple member identifier.");
+		}
+		catch(NullPointerException e){
+			err.semanticError(GCLError.NAME_NOT_DEFINED);
+			return new ErrorExpression("$ Invalid tuple member identifier.");
+		}
+
+		if(tupleExpression.case1()){
+			return new VariableExpression(fieldType, tupleExpression.semanticLevel(), tupleExpression.offset() + fieldInset, DIRECT);
+		}
+		if(tupleExpression.case2()){
+			int tupleAddressOffset = codegen.loadAddress(tupleExpression);
+			if(fieldInset != 0){
+				codegen.gen2Address(IA, tupleAddressOffset, new Location(Mode.IMMED, 0, fieldInset));
+			}
+			return new VariableExpression(fieldType, tupleExpression.semanticLevel(), tupleAddressOffset, INDIRECT);
+		}
+		if(tupleExpression.case3()){
+			int tupleAddressOffset = codegen.loadPointer(tupleExpression);
+			if(fieldInset != 0){
+				codegen.gen2Address(IA, tupleAddressOffset, new Location(Mode.IMMED, 0, fieldInset));
+			}
+			return new VariableExpression(fieldType, 0, tupleAddressOffset, INDIRECT);
+		}
+		err.semanticError(GCLError.ILLEGAL_TUPLE_ACCESS);
+		return new ErrorExpression("$ Unable to extract tuple component.");
 	}
 	
 	/***************************************************************************
