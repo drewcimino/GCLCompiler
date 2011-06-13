@@ -294,7 +294,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void defineLabelReferenceAndOutput(){
 		Integer offset = null;
-		System.out.println(definedLabels);//TODO debug only
+//		System.out.println(definedLabels);//TODO debug only
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof LabelReference){
 				LabelReference labelInstruction = (LabelReference) instruction;
@@ -308,8 +308,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 			codefile.println(instruction.samCode());
 			//TODO next two lines are macc output.
-			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
-			catch (IOException e) { e.printStackTrace(); }
+//			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
+//			catch (IOException e) { e.printStackTrace(); }
 		}
 	}
 
@@ -420,12 +420,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param opcode PUSH or POP
 	 * @param regs a list of one or more registers to push or pop
 	 */
-	public void genPushPopRegisters(SamOp opcode, final int...regs){
+	public void genPushPopRegisters(final SamOp opcode, final int...regs){
 		writeFiles(new PushPop(opcode, STACK_POINTER, regsToBits(regs)));
 	}
 	
 	/**
-	 * TODO Pushes or Pops all registers.
+	 * Pushes or Pops registers 0-11.
 	 * 
 	 * @param opcode PUSH or POP
 	 */
@@ -505,12 +505,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/**
-	 * TODO Stores current program counter and jumps to label.
+	 * Stores current program counter and jumps to label.
 	 * 
 	 * @param staticPointer saved previous location before jump.
 	 * @param label name of the label to jump to.
 	 */
-	public void genJumpSubroutine(int staticPointer, final String label) {
+	public void genJumpSubroutine(final int staticPointer, final String label) {
 		writeFiles(new JumpSubRoutine(JSR, staticPointer, label));
 	}
 
