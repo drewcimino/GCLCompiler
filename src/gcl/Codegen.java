@@ -1002,8 +1002,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param value String value to be assigned to bits.
 	 */
 	private static void setBits(BitSet bits, String value){
+		setBits(bits, 0, 7, 0);
 		for(int i = 0; i < value.length(); i++){
-			setBits(bits, i*8, (i+1)*8, value.charAt(value.length()-i-1));
+			setBits(bits, (i+1)*8, (i+2)*8, value.charAt(value.length()-i-1));
 		}
 	}
 
@@ -1261,7 +1262,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public int maccSize() {
-			return value.size();
+			if( value.maccString().length() % 2 == 0)
+				return value.maccString().length()+1;
+			else
+				return value.maccString().length()+2;
 		}
 
 		@Override
