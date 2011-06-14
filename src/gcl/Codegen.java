@@ -1002,9 +1002,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param value String value to be assigned to bits.
 	 */
 	private static void setBits(BitSet bits, String value){
-		setBits(bits, 0, 7, 0);
 		for(int i = 0; i < value.length(); i++){
-			setBits(bits, (i+1)*8, (i+2)*8, value.charAt(value.length()-i-1));
+			setBits(bits, (i)*8, (i)*8, value.charAt(value.length()-i-1));
 		}
 	}
 
@@ -1160,7 +1159,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
 			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), 0, 0, offset);
-			maccCode.set(20);// this can be done by setting that second zero up there to the right number, but this works too.
+			maccCode.set(20);
 		}
 		@Override
 		public String label(){

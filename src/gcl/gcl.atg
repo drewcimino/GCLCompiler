@@ -15,14 +15,14 @@ CHARACTERS
   nl = '\n'.
   tab = '\t'.
   underscore = "_" .
-  singleQuotedStringCharacters = ANY - "'" - eol - nl - '\0'. // '\0' represents
-  doubleQuotedStringCharacters = ANY - '"' - eol - nl - '\0'. // the null character
+  singleQuotedStringCharacters = ANY - "'" - eol - nl - '\0'. // '\0' represents the null character
+  doubleQuotedStringCharacters = ANY - '"' - eol - nl - '\0'.
 
 TOKENS
   identifier  = letter { letter | digit | underscore } .
   numeral = digit {digit}.
-  gclString = "'" { singleQuotedStringCharacters } "'" 
-  				 | '"' { doubleQuotedStringCharacters } '"'.
+  gclString = "'" { singleQuotedStringCharacters } "'" |
+  			  '"' { doubleQuotedStringCharacters } '"'.
 
 PRAGMAS 
 	option1 = "$"("c"|"C")("+"|"-").
@@ -63,7 +63,7 @@ module<SymbolTable scope>
 /*----------------------------------------------------------*/
 block<SymbolTable scope>
 =
-     definitionPart<scope> SYNC "begin"  statementPart<scope> "end".
+     definitionPart<scope> SYNC "begin" (. semantic.doLink(); .) statementPart<scope> "end".
 /*----------------------------------------------------------*/
 definitionPart<SymbolTable scope>
 =
@@ -93,12 +93,12 @@ constantDefinition<SymbolTable scope>
 	(. semantic.declareConstant(scope, id, exp.expectConstantExpression(err)); .).
 /*----------------------------------------------------------*/
 variableDefinition<SymbolTable scope, ParameterKind kindOfParam> 
+=
 	(.
 		String result;
 		TypeDescriptor type;
 		Identifier id;
 	.)
-=
 	type<^type, scope> validIdentifier<^result>
 	(.
 		id = new Identifier(result);
@@ -113,11 +113,11 @@ variableDefinition<SymbolTable scope, ParameterKind kindOfParam>
 	}.
 /*----------------------------------------------------------*/
 typeDefinition<SymbolTable scope>
+=
 	(.
 		TypeDescriptor type;
 		String result;
 	.)
-=
 	"typedefinition" type<^type, scope> validIdentifier<^result>
 	(. semantic.declareTypeDefinition(scope, type, new Identifier(result)); .).
 /*----------------------------------------------------------*/
@@ -134,17 +134,17 @@ procedureDefinition<SymbolTable scope>
 	(.
 	  	String procedureName = currentToken().spelling();
 		Identifier procedureId = new Identifier(procedureName);
-		SymbolTable procedureScope = semantic.procedureDefinition(tupleId, procedureId, scope);
+		SymbolTable procedureScope = semantic.openProcedureDefinition(tupleId, procedureId, scope);
 	.)
 	block<procedureScope>
 	(. semantic.closeProcedureDefinition(); .).
 /*----------------------------------------------------------*/
 arrayType<^TypeDescriptor result, TypeDescriptor componentType, SymbolTable scope>
+=
 	(.
 		SemanticItem subscriptType;
 		java.util.Stack<RangeType> subscripts = new java.util.Stack<RangeType>();
 	.)
-=
 	"array" "[" qualifiedIdentifier<^subscriptType, scope> (. subscripts.push(subscriptType.expectTypeDescriptor(err).expectRangeType(err)); .) "]"
 		  { "[" qualifiedIdentifier<^subscriptType, scope> (. subscripts.push(subscriptType.expectTypeDescriptor(err).expectRangeType(err)); .) "]" }
 	(. result = semantic.declareArrayType(subscripts, componentType); .).
@@ -196,7 +196,7 @@ fieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 	typeSymbol<^fieldType,scope> validIdentifier<^fieldName> 
 	(.
 		Identifier fieldId = new Identifier(fieldName);
-		carrier.enter(fieldType, fieldId);
+		carrier.enter(fieldType, fieldId, err);
 	.)
 	moreFieldsAndProcedures<^result, carrier, scope>.
 /*----------------------------------------------------------*/
@@ -212,7 +212,7 @@ moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 		typeSymbol<^fieldType,scope> validIdentifier<^fieldName> 
 		(.
 			Identifier fieldId = new Identifier(fieldName);
-			carrier.enter(fieldType, fieldId);
+			carrier.enter(fieldType, fieldId, err);
 		.)
 		moreFieldsAndProcedures<^result, carrier, scope> |
 		justProcedures<^result, carrier, scope>
@@ -224,7 +224,7 @@ procedureDeclaration<^TypeList result, TypeList carrier, SymbolTable outerScope>
 	"procedure" validIdentifier<^procedureName>
 	(.
 		Identifier procedureId = new Identifier(procedureName);
-		SymbolTable procedureScope = semantic.procedureDeclaration(procedureId, carrier, outerScope);
+		SymbolTable procedureScope = semantic.openProcedureDeclaration(procedureId, carrier, outerScope);
 	.)
 	parameterPart<procedureScope>
 	(.
@@ -255,6 +255,7 @@ statement<SymbolTable scope>
 	readStatement<scope> |
 	writeStatement<scope> |
 	variableAccessStatement<scope> |
+	returnStatement<> |
 	ifStatement<scope> |
 	doStatement<scope> |
 	forStatement<scope>.
@@ -331,12 +332,17 @@ callStatement<Expression tupleExpression, SymbolTable scope>
 		procedure = semantic.semanticValue(tuple.methods(), procedureId).expectProcedure(err);
 	.)
 	argumentList<^arguments, scope>
-	(. semantic.callProcedure(procedure, arguments); .).
+	(. semantic.callProcedure(tupleExpression, procedure, arguments); .).
 /*----------------------------------------------------------*/  
 argumentList<^ExpressionList arguments, SymbolTable scope>
 =
 	(. arguments = new ExpressionList(); .)
 	"(" [ expressionList<^arguments, scope> ] ")".
+/*----------------------------------------------------------*/
+returnStatement<>
+=
+	"return"
+	(. semantic.doReturn(); .).
 /*----------------------------------------------------------*/
 doStatement<SymbolTable scope>  (. GCRecord doRecord; .)
 =
