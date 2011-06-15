@@ -333,7 +333,7 @@ abstract class MultiplyOperator extends Operator {
 			return new ConstantExpression(IntegerType.INTEGER_TYPE, left.value() / right.value());
 		}
 	};
-	public static final MultiplyOperator MODULO = new MultiplyOperator("modulo", ID /* <-- ID is a dummy value*/ ){
+	public static final MultiplyOperator MODULO = new MultiplyOperator("modulo", null){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(IntegerType.INTEGER_TYPE, left.value() % right.value());
 		}
@@ -568,7 +568,7 @@ class ErrorConstantExpression extends ConstantExpression implements GeneralError
  */
 class VariableExpression extends Expression implements CodegenConstants {
 	
-	private final int offset; //  offset of cell or register number
+	private final int offset; // offset of cell or register number
 	private final boolean isDirect; // if false this is a pointer to a location.
 	
 	/**
@@ -2716,7 +2716,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			// declare and return rangetype
 			return new RangeType(baseType, lowerBound.value(), upperBound.value(), lowerLocation);
 		}
-		return ErrorType.NO_TYPE;
+		return NO_TYPE;
 	}
 	
 	/***************************************************************************

@@ -288,7 +288,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void writeInstructionList(){
 		defineLabelOffsets();
-		defineLabelReferenceAndOutput();	
+		defineLabelReferenceAndOutput();
 	}
 	
 	/**
@@ -298,8 +298,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		Integer instructionOffset = 0;
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof Label){
-				Label labelInstruction = (Label)instruction;
-				definedLabels.put(labelInstruction.name(), instructionOffset);
+				definedLabels.put(((Label)instruction).name(), instructionOffset);
 			}
 			instructionOffset += instruction.maccSize();
 		}
@@ -1018,7 +1017,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private static void setBits(BitSet bits, String value){
 		for(int i = 0; i < value.length(); i++){
-			setBits(bits, (i)*8, (i)*8, value.charAt(value.length()-i-1));
+			setBits(bits, (i)*8, (i+1)*8, value.charAt(value.length()-i-1));
 		}
 	}
 
@@ -1081,7 +1080,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public abstract BitSet maccCode();
 
 		/**
-		 * @return Returns the size, in words (2 bytes), of the instruction.
+		 * @return Returns the size, in bytes, of the instruction.
 		 */
 		public abstract int maccSize();
 	}
