@@ -65,7 +65,7 @@ abstract class SemanticItem {
 	 */
 	public Procedure expectProcedure(final GCLErrorStream err) {
 		err.semanticError(GCLError.PROCEDURE_REQUIRED);
-		return new ErrorProcedureRecord("$ Procedure Required");
+		return new ErrorProcedure("$ Procedure Required");
 	}
 	
 	public int semanticLevel() {
@@ -593,28 +593,28 @@ class VariableExpression extends Expression implements CodegenConstants {
 	 * @param direct is the value in the register (true) or a pointer (false)
 	 */
 	public VariableExpression(final TypeDescriptor type, final int register, final boolean direct) {
-		this(type, 0, register, direct);
+		this(type, CPU_LEVEL, register, direct);
 	}
 	
 	/**
 	 * @return level > 0 AND direct
 	 */
 	public boolean case1(){
-		return (semanticLevel() > 0 && isDirect);
+		return (semanticLevel() > CPU_LEVEL && isDirect);
 	}
 
 	/**
 	 * @return level == 0 AND indirect
 	 */
 	public boolean case2(){
-		return (semanticLevel() == 0 && !isDirect);
+		return (semanticLevel() == CPU_LEVEL && !isDirect);
 	}
 	
 	/**
 	 * @return level > 0 AND indirect
 	 */
 	public boolean case3(){
-		return (semanticLevel() > 0 && !isDirect);
+		return (semanticLevel() > CPU_LEVEL && !isDirect);
 	}
 
 	public VariableExpression expectVariableExpression(final GCLErrorStream err){
@@ -622,7 +622,8 @@ class VariableExpression extends Expression implements CodegenConstants {
 	}
 	
 	public boolean needsToBePushed() { // used by parallel assignment
-		return semanticLevel() > CPU_LEVEL	|| (semanticLevel() == CPU_LEVEL && !isDirect);
+		return true; // TODO debugging only
+//		return semanticLevel() > CPU_LEVEL || (semanticLevel() == CPU_LEVEL && !isDirect); // pushes globals and locals and indirect temporary
 	}
 
 	/**
@@ -769,7 +770,7 @@ class ExpressionList extends SemanticItem {
 }
 
 /** Loads procedure parameters polymorphically. */
-abstract class Loader implements CodegenConstants, Mnemonic{//FIXME Loader
+abstract class Loader implements CodegenConstants, Mnemonic{
 	
 	protected final TypeDescriptor type;
 	protected final int offset;
@@ -828,6 +829,7 @@ class ReferenceLoader extends Loader{
 	
 	@Override
 	public boolean isCompatible(Expression other, GCLErrorStream err){
+		other.expectVariableExpression(err);
 		return (other instanceof VariableExpression) && super.isCompatible(other, err);
 	}
 }
@@ -891,17 +893,16 @@ class ParameterKind extends SemanticItem{
 }
 
 /** Used to carry information for procedures */
-class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{//FIXME Procedure
+class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 	
 	static final int DEFAULT_FRAME_SIZE = 8;
-	static final int MINIMUM_DATA_SIZE = 22;
 	private List<Loader> parameters;
 	private TupleType parentTupleType;
 	private final Procedure parent;
 	private final SymbolTable scope;
 	private final int label;
 	private boolean defined;
-	private int initialFrameSize;
+	private int frameSize;
 	private int localDataSize;
 	
 	public Procedure(final Procedure parent, final SymbolTable scope, final int label, final int semanticLevel){
@@ -912,7 +913,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{//FIX
 		parentTupleType = ErrorTupleType.NO_TYPE;
 		parameters = new ArrayList<Loader>();
 		defined = false;
-		initialFrameSize = MINIMUM_DATA_SIZE;
+		frameSize = DEFAULT_FRAME_SIZE;
 		localDataSize = DEFAULT_FRAME_SIZE;
 	}
 	
@@ -960,43 +961,47 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{//FIX
 		return defined;
 	}
 	
-	public int initialFrameSize(){
-		return initialFrameSize;
+	public int frameSize(){
+		return frameSize;
 	}
 	
 	/**
-	 * @param type parameter's type
-	 * @param kind kind of parameter
+	 * reserves a parameter for this procedure<br/>
+	 * adds a new loader for it
+	 * 
+	 * @param type TypeDescriptor of the new parameter
+	 * @param kind either VALUE or REFERENCE
 	 * @param err error stream on which to complain
-	 * @return
+	 * @return VariableExpression representing the parameter
 	 */
-	public Expression reserveParameterAddress(final TypeDescriptor type, final ParameterKind kind, final GCLErrorStream err){
-		int offset = initialFrameSize;
+	public VariableExpression reserveParameterAddress(final TypeDescriptor type, final ParameterKind kind, final GCLErrorStream err){
+		int offset = frameSize;
 		Loader parameterLoader;
 		if(kind == ParameterKind.REFERENCE){
 			parameterLoader = new ReferenceLoader(type, offset);
-			initialFrameSize += parameterLoader.size();
+			frameSize += parameterLoader.size();
 			parameters.add(parameterLoader);
 			return new VariableExpression(type, semanticLevel(), offset, INDIRECT);
 		}
-		else if(kind == ParameterKind.VALUE){
-			if(type.size() > 2){
+		if(kind == ParameterKind.VALUE){
+			if(type.size() > 2){// TODO possibly check instanceof tupletype
 				parameterLoader = new BlockLoader(type, offset);
 			}
 			else{
 				parameterLoader = new ValueLoader(type, offset);
 			}
-			initialFrameSize += parameterLoader.size();
+			frameSize += parameterLoader.size();
 			parameters.add(parameterLoader);
 			return new VariableExpression(type, semanticLevel(), offset, DIRECT);
 		}
-		return new ErrorExpression("$ Non parameter passed as such.");
+		return new ErrorVariableExpression("$ Non parameter passed as such.");
 	}
 
 	/**
+	 * Reserves a local variable in this procedure
 	 * 
-	 * @param type
-	 * @return
+	 * @param type TypeDescriptor of the local
+	 * @return VariableExpression representing the local
 	 */
 	public VariableExpression reserveLocalAddress(TypeDescriptor type) {
 		localDataSize += type.size();
@@ -1005,7 +1010,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{//FIX
 	}
 	
 	/**
-	 * Calls this procedure with a given argumentList.
+	 * Calls this procedure with a given argumentList
 	 * 
 	 * @param argumentList ExpressionList of arguments
 	 * @param codegen compiler's code generator
@@ -1027,6 +1032,9 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{//FIX
 		if(arguments.hasNext()){
 			err.semanticError(GCLError.INVALID_ARGUMENTS, "Too many parameters passed.");
 		}
+		codegen.genJumpSubroutine(STATIC_POINTER, "P" + label);
+		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
+		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, frameSize);
 	}
 	
 	/**
@@ -1050,26 +1058,26 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{//FIX
 	 */
 	public void generateUnlinkCode(final Codegen codegen) {
 		codegen.genLabel('U', label);
-		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, localDataSize);
-		codegen.gen2Address(LD, STATIC_POINTER, INDXD, STACK_POINTER, 4);
-		codegen.gen2Address(LD, FRAME_POINTER, INDXD, STACK_POINTER, 0);
+		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, localDataSize - DEFAULT_FRAME_SIZE);
+		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 4);
+		codegen.gen2Address(LD, FRAME_POINTER, INDXD, FRAME_POINTER, 0);
 		codegen.gen1Address(JMP, IREG, STATIC_POINTER, 0);
 	}
 }
 
 /** Used to represent errors where procedures are expected. Immutable. */
-class ErrorProcedureRecord extends Procedure implements GeneralError{
+class ErrorProcedure extends Procedure implements GeneralError{
 	
 	private final String message;
 
-	public ErrorProcedureRecord(final String message) {
+	public ErrorProcedure(final String message) {
 		super(null, SymbolTable.unchained(), 0, GLOBAL_LEVEL);
 		this.message = message;
 		CompilerOptions.message(message);
 	}
 	
 	public Procedure parent(){
-		return new ErrorProcedureRecord("$ ErrorProcedure does not have a parent procedure.");
+		return new ErrorProcedure("$ ErrorProcedure does not have a parent procedure.");
 	}
 
 	public String toString() {
@@ -1518,11 +1526,6 @@ class TypeList extends SemanticItem {
 	}
 }
 
-class ProcedureList extends SemanticItem {
-	
-
-}
-
 /**
  * Represents the various tuple types. Created as needed. These are built
  * incrementally and locked at the end to make them immutable afterwards.
@@ -1777,7 +1780,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	static final TypeDescriptor NO_TYPE = ErrorType.NO_TYPE;
 	private SemanticLevel currentLevel = new SemanticLevel();
 	private GCLErrorStream err = null;
-	private Procedure currentProcedure = null;
+	private Procedure currentProcedure = new ErrorProcedure("$ Global level.");
 
 	SemanticActions(final Codegen codeGenerator, final GCLErrorStream err) {
 		this.codegen = codeGenerator;
@@ -1831,10 +1834,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	private boolean OKToRedefine(final SymbolTable.Entry entry) {
 		
-		if(entry == SymbolTable.NULL_ENTRY || entry.module() != SymbolTable.currentModule()){
+		if(entry == SymbolTable.NULL_ENTRY || entry.module() != SymbolTable.currentModule() || entry.semanticRecord().semanticLevel() != currentLevel.value()){
 			return true;
 		}
-		return false; // more later
+		return false;
 	}
 
 	/***************************************************************************
@@ -2044,7 +2047,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * 
 	 * @param expressions an assignment record with two expr vectors (RHSs, LHSs )
 	 **************************************************************************/
-	void parallelAssign(final AssignRecord expressions) {//TODO are push and pop being used properly? are block transfers working properly?
+	void parallelAssign(final AssignRecord expressions) {
 		
 		int i;
 		// part 1. checks and optimizations
@@ -2052,26 +2055,26 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return;
 		}
 		int entries = expressions.size(); // number of entries to process
-		if (CompilerOptions.optimize && entries == 1) {//TODO 11_1 fails without this optimization. The rest of this method doesn't work properly.
+		if (CompilerOptions.optimize && entries == 1) {
 			simpleMove(expressions.right(0), expressions.left(0));
 			return; // Optimized to skip push/pop for one item
 		}
 		// part 2. pushing except consts, temps, and stackvariables
 		for (i = 0; i < entries; ++i) {
 			Expression rightExpression = expressions.right(i);
-			if (rightExpression.needsToBePushed()) {
+			if (rightExpression.needsToBePushed()){
 				pushExpression(rightExpression);
 			}
 		}
 		// part 3. popping the items pushed in part 2 & copying the rest
-		for (i = entries - 1; i >= 0; --i) {
+		for (i = entries - 1; i >= 0; --i){
 			Expression rightExpression = expressions.right(i);
 			Expression leftExpression = expressions.left(i);
 			// runtime bounds check.
 			if (leftExpression.type() instanceof RangeType && !(rightExpression instanceof ConstantExpression)){
 				codegen.gen2Address(TRNG, codegen.loadRegister(rightExpression), leftExpression.type().expectRangeType(err).location());
 			}
-			if (rightExpression.needsToBePushed()) {
+			if (rightExpression.needsToBePushed()){
 				popExpression(leftExpression);
 			} else { // the item wasn't pushed, so normal copy
 				simpleMove(rightExpression, leftExpression);
@@ -2486,9 +2489,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if (currentLevel().isGlobal()) { // Global variable
 			int addressOffset = codegen.reserveGlobalAddress(type.size());
 			expr = new VariableExpression(type, currentLevel().value(), addressOffset, DIRECT);
-		} else { // may be param or local in a proc
-			// more later -- for now throw an exception
-			throw new IllegalStateException("Missing code in declareVariable.");
+		}
+		else if(procParam == ParameterKind.NOT_PARAM){ // Procedure local
+			expr = currentProcedure.reserveLocalAddress(type);
+		}
+		else{ // Procedure parameter
+			expr = currentProcedure.reserveParameterAddress(type, procParam, err);
 		}
 		SymbolTable.Entry variable = scope.newEntry("variable", id, expr);
 		CompilerOptions.message("Entering: " + variable);
@@ -2531,7 +2537,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param outerScope The scope where this procedure's tuple is defined.
 	 * @return The new scope of the procedure.
 	 **************************************************************************/
-	SymbolTable openProcedureDeclaration(final Identifier procedureId, TypeList carrier, final SymbolTable outerScope){// FIXME Start procedure semantics
+	SymbolTable openProcedureDeclaration(final Identifier procedureId, TypeList carrier, final SymbolTable outerScope){
 		
 		currentLevel.increment();
 		currentProcedure = new Procedure(currentProcedure, outerScope.openScope(false), codegen.getLabel(), currentLevel().value());
@@ -2561,7 +2567,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	SymbolTable openProcedureDefinition(final Identifier tupleId, final Identifier procedureId, final SymbolTable outerScope){
 				
 		SymbolTable tupleScope = tupleScope(semanticValue(outerScope, tupleId));
-		Procedure procedure = semanticValue(tupleScope, procedureId).expectProcedure(err);
+		SemanticItem procedureItem = semanticValue(tupleScope, procedureId);
+		if(procedureItem instanceof GeneralError){ // complain once
+			return SymbolTable.unchained();
+		}
+		Procedure procedure = procedureItem.expectProcedure(err);
 		
 		if(procedure.defined()){
 			err.semanticError(GCLError.ALREADY_DEFINED, tupleId.name() + "@" + procedureId.name() + " already defined.");
@@ -2609,16 +2619,15 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if(tuple instanceof GeneralError || procedure instanceof GeneralError){
 			return;
 		}
-		
 		if(!procedure.defined()){
 			err.semanticError(GCLError.PROCEDURE_NOT_DEFINED); 
 			return;
 		}
 
-		int thisReg = codegen.loadAddress(tuple);
-		codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, procedure.initialFrameSize());
-		codegen.gen2Address(STO, thisReg, INDXD, STACK_POINTER, 6);
-		codegen.freeTemp(DREG, thisReg);
+		int tupleReg = codegen.loadAddress(tuple);
+		codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, procedure.frameSize());
+		codegen.gen2Address(STO, tupleReg, INDXD, STACK_POINTER, 6);
+		codegen.freeTemp(DREG, tupleReg);
 		
 		int levelDifference = currentLevel().value() - procedure.semanticLevel();
 		Location persistedStaticInNewFrame = new Location(INDXD, STACK_POINTER, 2);
@@ -2636,15 +2645,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 
 		procedure.call(arguments, codegen, err);
-		codegen.genJumpSubroutine(STATIC_POINTER, "P" + procedure.label());
-		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
-		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, procedure.initialFrameSize());
 	}
 	
 	/***************************************************************************
 	 * returns a value from a procedure call.
 	 **************************************************************************/
-	public void doReturn(){
+	void doReturn(){
 		
 		if(!currentLevel().isGlobal()){
 			codegen.genJumpLabel(JMP, 'U', currentProcedure.label());
@@ -2652,19 +2658,19 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		else{
 			err.semanticError(GCLError.INVALID_RETURN);
 		}
-	}// FIXME end procedure semantics
+	}
 	
 	/***************************************************************************
 	 * @return this, the tuple parent of the current procedure.
 	 **************************************************************************/
-	public VariableExpression procedureThis(){
+	VariableExpression currentProcedureThis(){
 		return new VariableExpression(currentProcedure.parentTupleType(), currentProcedure.semanticLevel(), 6, INDIRECT);
 	}
 	
 	/***************************************************************************
 	 * Declare Array Type.
 	 * 
-	 * @param subscripts Stack<RangeType> representing the successive dimension bounds of this array.
+	 * @param subscripts Stack<RangeType> representing the successive dimensions bounds of this array.
 	 * @param componentType The type of elements this ArrayType contains.
 	 **************************************************************************/
 	TypeDescriptor declareArrayType(java.util.Stack<RangeType> subscripts, final TypeDescriptor componentType){

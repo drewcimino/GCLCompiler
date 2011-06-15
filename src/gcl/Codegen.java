@@ -145,17 +145,33 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			mode = isDirect ? DREG : IREG;
 			base = variable.offset();
 			displacement = UNUSED;
-		} else if (itsLevel == GLOBAL_LEVEL) {
+		}
+		else if (itsLevel == GLOBAL_LEVEL) {
 			mode = isDirect ? INDXD : IINDXD;
 			base = VARIABLE_BASE;
 			displacement = variable.offset();
-		} else if (itsLevel == STACK_LEVEL) { // This may be wrong. JB.
+		}
+		else if (itsLevel == STACK_LEVEL) { // This may be wrong. JB.
 			mode = IREG;
 			base = variable.offset();
 			displacement = UNUSED;
-		} else { // its level > 1;
-			int currentlevel = currentLevel.value();
-			// more later for function/procedure blocks
+		}
+		else { // its level > 1;
+			int levelDifference = currentLevel.value() - itsLevel;
+			if(levelDifference == 0){
+				base = FRAME_POINTER;
+			}
+			else if(levelDifference == 1){
+				base = STATIC_POINTER;
+			}
+			else{
+				int reg = getTemp(1);
+				gen2Address(LD, reg, INDXD, STATIC_POINTER, 2);
+				gen2Address(LD, reg, INDXD, reg, 2);
+				base = reg;
+			}
+			mode = isDirect ? INDXD : IINDXD;
+			displacement = variable.offset();
 		}
 		return new Location(mode, base, displacement);
 	}
@@ -272,7 +288,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void writeInstructionList(){
 		defineLabelOffsets();
-		defineLabelReferenceAndOutput();
+		defineLabelReferenceAndOutput();	
 	}
 	
 	/**
@@ -294,7 +310,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void defineLabelReferenceAndOutput(){
 		Integer offset = null;
-//		System.out.println(definedLabels);//TODO debug only
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof LabelReference){
 				LabelReference labelInstruction = (LabelReference) instruction;
@@ -307,7 +322,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				}
 			}
 			codefile.println(instruction.samCode());
-			//TODO next two lines are macc output.
+			// TODO comment while testing sam code; uncomment while testing macc code.
 //			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
 //			catch (IOException e) { e.printStackTrace(); }
 		}

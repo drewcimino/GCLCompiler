@@ -178,29 +178,29 @@ tupleType<^TupleType result, SymbolTable scope>
 	(. result = new TupleType(carrier); .)
 	(. semantic.insertComment(result.toString()); .).
 /*----------------------------------------------------------*/
-justProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
+justProcedures<^TypeList result, TypeList carrier, SymbolTable outerScope>
 =
-	procedureDeclaration<^carrier, carrier, scope>
+	procedureDeclaration<^carrier, carrier, outerScope>
 	{
 		","
-		procedureDeclaration<^carrier, carrier, scope>
+		procedureDeclaration<^carrier, carrier, outerScope>
 	}
 	(. result = carrier; .).
 /*----------------------------------------------------------*/
-fieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
+fieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable outerScope>
 =
 	(.
 		TypeDescriptor fieldType;
 		String fieldName;
 	.)
-	typeSymbol<^fieldType,scope> validIdentifier<^fieldName> 
+	typeSymbol<^fieldType, outerScope> validIdentifier<^fieldName> 
 	(.
 		Identifier fieldId = new Identifier(fieldName);
 		carrier.enter(fieldType, fieldId, err);
 	.)
-	moreFieldsAndProcedures<^result, carrier, scope>.
+	moreFieldsAndProcedures<^result, carrier, outerScope>.
 /*----------------------------------------------------------*/
-moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
+moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable outerScope>
 =
 	(. result = carrier; .)
 	[
@@ -209,13 +209,13 @@ moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable scope>
 			TypeDescriptor fieldType;
 			String fieldName;
 		.)
-		typeSymbol<^fieldType,scope> validIdentifier<^fieldName> 
+		typeSymbol<^fieldType, outerScope> validIdentifier<^fieldName> 
 		(.
 			Identifier fieldId = new Identifier(fieldName);
 			carrier.enter(fieldType, fieldId, err);
 		.)
-		moreFieldsAndProcedures<^result, carrier, scope> |
-		justProcedures<^result, carrier, scope>
+		moreFieldsAndProcedures<^result, carrier, outerScope> |
+		justProcedures<^result, carrier, outerScope>
 	].
 /*----------------------------------------------------------*/
 procedureDeclaration<^TypeList result, TypeList carrier, SymbolTable outerScope>
@@ -329,7 +329,13 @@ callStatement<Expression tupleExpression, SymbolTable scope>
 	(.
 		tuple = tupleExpression.type().expectTupleType(err);
 		procedureId = new Identifier(currentToken().spelling());
-		procedure = semantic.semanticValue(tuple.methods(), procedureId).expectProcedure(err);
+		SemanticItem procedureItem = semantic.semanticValue(tuple.methods(), procedureId);
+		if(procedureItem instanceof GeneralError){
+			procedure = new ErrorProcedure("$ Procedure ID not found. ");
+		}
+		else{
+			procedure = procedureItem.expectProcedure(err);
+		}
 	.)
 	argumentList<^arguments, scope>
 	(. semantic.callProcedure(tupleExpression, procedure, arguments); .).
@@ -491,8 +497,11 @@ validIdentifier<^String result>
 /*----------------------------------------------------------*/
 variableAccessEtc<^Expression result, SymbolTable scope>
 =
-	(. SemanticItem workValue; .)
-	qualifiedIdentifier<^workValue, scope>
+	(. SemanticItem workValue = null; .)
+	(
+		qualifiedIdentifier<^workValue, scope> |
+		"this" (. workValue = semantic.currentProcedureThis(); .)
+	)
 	subsAndCompons<^result, workValue, scope>.
 /*----------------------------------------------------------*/
 subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
