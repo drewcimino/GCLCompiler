@@ -18,7 +18,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	private Stack<RegisterSet> savedRegisters = new Stack<RegisterSet>();
 	// Honors Code
 	private FileOutputStream objfile;
-	private Collection<Instruction> instructionList = new ArrayList<Instruction>(); // Collection of instructions
+	private List<Instruction> instructionList = new ArrayList<Instruction>(); // Collection of instructions
 	private Hashtable<String, Integer> definedLabels = new Hashtable<String, Integer>(); // Label definitions String name -> int instructionIndex
 
 	Codegen(final SemanticActions.GCLErrorStream err) {
@@ -309,7 +309,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void defineLabelReferenceAndOutput(){
 		Integer offset = null;
-		for(Instruction instruction : instructionList){
+		Instruction instruction;
+		for(int instructionIndex = 0; instructionIndex < instructionList.size(); instructionIndex++){
+			instruction = instructionList.get(instructionIndex);
 			if(instruction instanceof LabelReference){
 				LabelReference labelInstruction = (LabelReference) instruction;
 				offset = definedLabels.get(labelInstruction.label());
