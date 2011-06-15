@@ -309,9 +309,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void defineLabelReferenceAndOutput(){
 		Integer offset = null;
-		Instruction instruction;
-		for(int instructionIndex = 0; instructionIndex < instructionList.size(); instructionIndex++){
-			instruction = instructionList.get(instructionIndex);
+		System.out.println(definedLabels);
+		for(Instruction instruction : instructionList){
 			if(instruction instanceof LabelReference){
 				LabelReference labelInstruction = (LabelReference) instruction;
 				offset = definedLabels.get(labelInstruction.label());

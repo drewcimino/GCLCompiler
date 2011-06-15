@@ -56,9 +56,10 @@ module<SymbolTable scope>
 = 
 	(. String result; .)
 	"module" validIdentifier<^result> (. semantic.declareModule(scope, new Identifier(result)); .) definitionPart<scope>
-	[
-		"private" (. SymbolTable privateScope = scope.openScope(false); .) block<privateScope>
-	]
+	(
+		"private" (. SymbolTable privateScope = scope.openScope(false); .) block<privateScope> |
+		(. semantic.doLink(); .)
+	)
 	".". 
 /*----------------------------------------------------------*/
 block<SymbolTable scope>

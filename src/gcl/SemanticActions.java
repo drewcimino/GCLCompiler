@@ -627,10 +627,11 @@ class VariableExpression extends Expression implements CodegenConstants {
 	}
 
 	/**
-	 * The  address of the variable. What it is  to depends on
-	 * its scopeLevel. If the level is 1 it is  to R15.
+	 * The address of the variable.
+	 * What it is to depends on its scopeLevel.
+	 * If the level is 1 it is to R15.
 	 * 
-	 * @return the  offset from its base register.
+	 * @return the offset from its base register.
 	 */
 	public int offset() {
 		return offset;
