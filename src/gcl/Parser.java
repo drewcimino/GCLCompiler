@@ -402,7 +402,6 @@ public class Parser {
 		} else SynErr(70);
 		Expect(18);
 		result = new TupleType(carrier); 
-		semantic.insertComment(result.toString()); 
 		return result;
 	}
 
@@ -449,9 +448,9 @@ public class Parser {
 	TypeList  moreFieldsAndProcedures(TypeList carrier, SymbolTable outerScope) {
 		TypeList  result;
 		result = carrier; 
-		if (la.kind == 12 || la.kind == 14) {
-			if (la.kind == 12) {
-				Get();
+		if (la.kind == 12) {
+			Get();
+			if (la.kind == 1 || la.kind == 21 || la.kind == 22) {
 				TypeDescriptor fieldType;
 				String fieldName;
 				
@@ -461,9 +460,9 @@ public class Parser {
 				carrier.enter(fieldType, fieldId, err);
 				
 				result = moreFieldsAndProcedures(carrier, outerScope);
-			} else {
+			} else if (la.kind == 14) {
 				result = justProcedures(carrier, outerScope);
-			}
+			} else SynErr(71);
 		}
 		return result;
 	}
@@ -487,7 +486,7 @@ public class Parser {
 		} else if (la.kind == 27) {
 			Get();
 			variableDefinition(procedureScope, ParameterKind.REFERENCE);
-		} else SynErr(71);
+		} else SynErr(72);
 	}
 
 	void emptyStatement() {
@@ -523,7 +522,7 @@ public class Parser {
 			assignStatement(exp, scope);
 		} else if (la.kind == 32) {
 			callStatement(exp, scope);
-		} else SynErr(72);
+		} else SynErr(73);
 	}
 
 	void returnStatement() {
@@ -567,7 +566,7 @@ public class Parser {
 		} else if (la.kind == 55) {
 			Get();
 			workValue = semantic.currentProcedureThis(); 
-		} else SynErr(73);
+		} else SynErr(74);
 		result = subsAndCompons(workValue, scope);
 		return result;
 	}
@@ -580,7 +579,7 @@ public class Parser {
 		} else if (la.kind == 3) {
 			Get();
 			semantic.writeString(new StringConstant(currentToken().spelling())); 
-		} else SynErr(74);
+		} else SynErr(75);
 	}
 
 	ExpressionList  expressionList(SymbolTable scope) {
@@ -713,7 +712,7 @@ public class Parser {
 			Get();
 			left = term(scope);
 			left = semantic.negateBooleanExpression(left); 
-		} else SynErr(75);
+		} else SynErr(76);
 		while (la.kind == 44 || la.kind == 45) {
 			op = addOperator();
 			right = term(scope);
@@ -756,7 +755,7 @@ public class Parser {
 			op = RelationalOperator.LESS_OR_EQUAL; 
 			break;
 		}
-		default: SynErr(76); break;
+		default: SynErr(77); break;
 		}
 		return op;
 	}
@@ -785,7 +784,7 @@ public class Parser {
 		} else if (la.kind == 45) {
 			Get();
 			op = AddOperator.MINUS; 
-		} else SynErr(77);
+		} else SynErr(78);
 		return op;
 	}
 
@@ -810,7 +809,7 @@ public class Parser {
 			tupleFields = expressionList(scope);
 			Expect(18);
 			result = semantic.buildTuple(tupleFields); 
-		} else SynErr(78);
+		} else SynErr(79);
 		return result;
 	}
 
@@ -826,7 +825,7 @@ public class Parser {
 		} else if (la.kind == 54) {
 			Get();
 			op = MultiplyOperator.MODULO; 
-		} else SynErr(79);
+		} else SynErr(80);
 		return op;
 	}
 
@@ -835,7 +834,7 @@ public class Parser {
 			Get();
 		} else if (la.kind == 57) {
 			Get();
-		} else SynErr(80);
+		} else SynErr(81);
 	}
 
 	Expression  subsAndCompons(SemanticItem identifier, SymbolTable scope) {
@@ -984,16 +983,17 @@ class Errors {
 			case 68: s = "invalid type"; break;
 			case 69: s = "invalid typeSymbol"; break;
 			case 70: s = "invalid tupleType"; break;
-			case 71: s = "invalid parameterDefinition"; break;
-			case 72: s = "invalid variableAccessStatement"; break;
-			case 73: s = "invalid variableAccessEtc"; break;
-			case 74: s = "invalid writeItem"; break;
-			case 75: s = "invalid simpleExpr"; break;
-			case 76: s = "invalid relationalOperator"; break;
-			case 77: s = "invalid addOperator"; break;
-			case 78: s = "invalid factor"; break;
-			case 79: s = "invalid multiplyOperator"; break;
-			case 80: s = "invalid booleanConstant"; break;
+			case 71: s = "invalid moreFieldsAndProcedures"; break;
+			case 72: s = "invalid parameterDefinition"; break;
+			case 73: s = "invalid variableAccessStatement"; break;
+			case 74: s = "invalid variableAccessEtc"; break;
+			case 75: s = "invalid writeItem"; break;
+			case 76: s = "invalid simpleExpr"; break;
+			case 77: s = "invalid relationalOperator"; break;
+			case 78: s = "invalid addOperator"; break;
+			case 79: s = "invalid factor"; break;
+			case 80: s = "invalid multiplyOperator"; break;
+			case 81: s = "invalid booleanConstant"; break;
 				default: s = "error " + n; break;
 			}
 			printMsg(line, col, s);

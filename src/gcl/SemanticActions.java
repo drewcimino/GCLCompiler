@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.io.PrintWriter;
 
+import javax.swing.text.DefaultEditorKit.InsertContentAction;
+
 //-------------------- Semantic Records ---------------------
 /**
  * This interface is implemented by all semantic Item classes that represent
@@ -720,7 +722,7 @@ class AssignRecord extends SemanticItem {
 				}
 				if(!left(variableIndex).type().isCompatible(right(variableIndex).type())){
 					result = false;
-					err.semanticError(GCLError.TYPE_MISMATCH);
+					err.semanticError(GCLError.TYPE_MISMATCH, left(variableIndex).type().toString() + " :=\n" + right(variableIndex).type().toString());
 				}
 				else if (left(variableIndex).type() instanceof RangeType && right(variableIndex) instanceof ConstantExpression){
 					RangeType leftRangeType = left(variableIndex).type().expectRangeType(err);
@@ -1295,7 +1297,7 @@ class IntegerType extends TypeDescriptor implements CodegenConstants {
 	}
 
 	public String toString() {
-		return "integer type.";
+		return "integer type";
 	}
 
 	static public final IntegerType INTEGER_TYPE = new IntegerType();
@@ -1312,7 +1314,7 @@ class BooleanType extends TypeDescriptor implements CodegenConstants {
 	}
 
 	public String toString() {
-		return "Boolean type.";
+		return "boolean type";
 	}
 
 	public boolean isCompatible(final TypeDescriptor other) {
@@ -1372,7 +1374,7 @@ class RangeType extends TypeDescriptor implements CodegenConstants {
 	}
 	
 	public String toString(){
-		return "rangetype: " + baseType.toString();
+		return "rangetype " + baseType.toString() + " [" + lowerBound + ".." + upperBound + "]";
 	}
 	
 	public boolean isCompatible(final TypeDescriptor other) {
@@ -1419,7 +1421,7 @@ class ArrayType extends TypeDescriptor implements CodegenConstants {
 	}
 	
 	public String toString(){
-		return "arraytype: " + componentType.toString() + " [" + subscriptType.lowerBound() + ".." + subscriptType.upperBound() + "]";
+		return "arraytype (" + componentType.toString() + ") [" + subscriptType.lowerBound() + ".." + subscriptType.upperBound() + "]";
 	}
 	
 	public boolean isCompatible(final TypeDescriptor other) {// uses short circuiting to avoid a dangerous hard cast.
@@ -1576,10 +1578,8 @@ class TupleType extends TypeDescriptor { // mutable
 	
 	/** @return true if all field types are compatible between this and other. */
 	private boolean fieldsAreCompatible(TupleType other){
-		Iterator<TupleField> thisFields = fields.values().iterator();
-		Iterator<TupleField> otherFields = other.fields.values().iterator();
-		while(thisFields.hasNext()){
-			if(!thisFields.next().type.isCompatible(otherFields.next().type)){
+		for(int i = 0; i < fields.size(); ++i){
+			if(!fields.get(names.get(i)).type.isCompatible(other.getType(other.names.get(i)))){
 				return false;
 			}
 		}
@@ -1591,12 +1591,11 @@ class TupleType extends TypeDescriptor { // mutable
 	}
 
 	public String toString() {
-		String result = "tupleType:[";
-		for (int i = 0; i < fields.size(); ++i) {
-			result += fields.get(names.get(i)) + " : " + names.get(i) + ", ";// type);
+		String result = "tuple[";
+		for(int i = 0; i < fields.size(); ++i){
+			result += fields.get(names.get(i)) +  ", ";
 		}
-		result += "] with size: " + size();
-		return result;
+		return result + "]";
 	}
 
 	/**

@@ -309,7 +309,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void defineLabelReferenceAndOutput(){
 		Integer offset = null;
-		System.out.println(definedLabels);
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof LabelReference){
 				LabelReference labelInstruction = (LabelReference) instruction;
@@ -445,7 +444,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param opcode PUSH or POP
 	 */
 	public void genPushPopToStack(final SamOp opcode) {
-		genPushPopRegisters(opcode, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+		genPushPopRegisters(opcode, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 	}
 
 	/** Push the contents of a register onto the runtime stack.

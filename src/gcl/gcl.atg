@@ -176,8 +176,7 @@ tupleType<^TupleType result, SymbolTable scope>
 		fieldsAndProcedures<^carrier, carrier, scope>
 	)
 	"]"
-	(. result = new TupleType(carrier); .)
-	(. semantic.insertComment(result.toString()); .).
+	(. result = new TupleType(carrier); .).
 /*----------------------------------------------------------*/
 justProcedures<^TypeList result, TypeList carrier, SymbolTable outerScope>
 =
@@ -206,17 +205,19 @@ moreFieldsAndProcedures<^TypeList result, TypeList carrier, SymbolTable outerSco
 	(. result = carrier; .)
 	[
 		","
-		(.
-			TypeDescriptor fieldType;
-			String fieldName;
-		.)
-		typeSymbol<^fieldType, outerScope> validIdentifier<^fieldName> 
-		(.
-			Identifier fieldId = new Identifier(fieldName);
-			carrier.enter(fieldType, fieldId, err);
-		.)
-		moreFieldsAndProcedures<^result, carrier, outerScope> |
-		justProcedures<^result, carrier, outerScope>
+		(
+			(.
+				TypeDescriptor fieldType;
+				String fieldName;
+			.)
+			typeSymbol<^fieldType, outerScope> validIdentifier<^fieldName> 
+			(.
+				Identifier fieldId = new Identifier(fieldName);
+				carrier.enter(fieldType, fieldId, err);
+			.)
+			moreFieldsAndProcedures<^result, carrier, outerScope> |
+			justProcedures<^result, carrier, outerScope>
+		)
 	].
 /*----------------------------------------------------------*/
 procedureDeclaration<^TypeList result, TypeList carrier, SymbolTable outerScope>
