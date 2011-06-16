@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.io.PrintWriter;
 
-import javax.swing.text.DefaultEditorKit.InsertContentAction;
-
 //-------------------- Semantic Records ---------------------
 /**
  * This interface is implemented by all semantic Item classes that represent
@@ -624,7 +622,7 @@ class VariableExpression extends Expression implements CodegenConstants {
 	}
 	
 	public boolean needsToBePushed() { // used by parallel assignment
-		return true; // TODO debugging only
+		return true; // TODO debugging only. why does the line below cause good sam code but bad output?
 //		return semanticLevel() > CPU_LEVEL || (semanticLevel() == CPU_LEVEL && !isDirect); // pushes globals and locals and indirect temporary
 	}
 
@@ -1576,7 +1574,7 @@ class TupleType extends TypeDescriptor { // mutable
 			   (fieldsAreCompatible((TupleType)other));
 	}
 	
-	/** @return true if all field types are compatible between this and other. */
+	/** @return true if all field types are compatible between this and other; false otherwise */
 	private boolean fieldsAreCompatible(TupleType other){
 		for(int i = 0; i < fields.size(); ++i){
 			if(!fields.get(names.get(i)).type.isCompatible(other.getType(other.names.get(i)))){
