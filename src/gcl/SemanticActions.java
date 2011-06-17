@@ -2624,7 +2624,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 
 		int tupleReg = codegen.loadAddress(tuple);
 		codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, procedure.frameSize());
-		codegen.gen2Address(STO, tupleReg, INDXD, STACK_POINTER, 6);
+		codegen.gen2Address(STO, tupleReg, INDXD, STACK_POINTER, 6); //TODO switched to frameptr
 		codegen.freeTemp(DREG, tupleReg);
 		
 		int levelDifference = currentLevel().value() - procedure.semanticLevel();
