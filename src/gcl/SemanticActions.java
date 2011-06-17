@@ -903,7 +903,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 	private final SymbolTable scope;
 	private final int label;
 	private boolean defined;
-	private int frameSize;
+	private int activationSize;
 	private int localDataSize;
 	
 	public Procedure(final Procedure parent, final SymbolTable scope, final int label, final int semanticLevel){
@@ -914,7 +914,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 		parentTupleType = ErrorTupleType.NO_TYPE;
 		parameters = new ArrayList<Loader>();
 		defined = false;
-		frameSize = DEFAULT_FRAME_SIZE;
+		activationSize = DEFAULT_FRAME_SIZE;
 		localDataSize = DEFAULT_FRAME_SIZE;
 	}
 	
@@ -962,8 +962,8 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 		return defined;
 	}
 	
-	public int frameSize(){
-		return frameSize;
+	public int activationSize(){
+		return activationSize;
 	}
 	
 	/**
@@ -976,11 +976,11 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 	 * @return VariableExpression representing the parameter
 	 */
 	public VariableExpression reserveParameterAddress(final TypeDescriptor type, final ParameterKind kind, final GCLErrorStream err){
-		int offset = frameSize;
+		int offset = activationSize;
 		Loader parameterLoader;
 		if(kind == ParameterKind.REFERENCE){
 			parameterLoader = new ReferenceLoader(type, offset);
-			frameSize += parameterLoader.size();
+			activationSize += parameterLoader.size();
 			parameters.add(parameterLoader);
 			return new VariableExpression(type, semanticLevel(), offset, INDIRECT);
 		}
@@ -991,7 +991,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 			else{
 				parameterLoader = new ValueLoader(type, offset);
 			}
-			frameSize += parameterLoader.size();
+			activationSize += parameterLoader.size();
 			parameters.add(parameterLoader);
 			return new VariableExpression(type, semanticLevel(), offset, DIRECT);
 		}
@@ -1035,7 +1035,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 		}
 		codegen.genJumpSubroutine(STATIC_POINTER, "P" + label);
 		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
-		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, frameSize);
+		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, activationSize);
 	}
 	
 	/**
@@ -2623,7 +2623,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		}
 
 		int tupleReg = codegen.loadAddress(tuple);
-		codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, procedure.frameSize());
+		codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, procedure.activationSize());
 		codegen.gen2Address(STO, tupleReg, INDXD, STACK_POINTER, 6); //TODO switched to frameptr
 		codegen.freeTemp(DREG, tupleReg);
 		

@@ -533,6 +533,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		gen2Address(LDA, VARIABLE_BASE, "V1");
 		gen2Address(LDA, CONSTANT_BASE, "C1");
 		gen2Address(LD, STACK_POINTER, IMMED, 0, 16000);
+		gen2Address(LD, FRAME_POINTER, DREG, STACK_POINTER, UNUSED);
+		gen2Address(LD, STATIC_POINTER, DREG, STACK_POINTER, UNUSED);
 	}
 
 	/** Generate the end code, including the C1 and V1 blocks */
@@ -593,7 +595,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				pair[i] = false;
 				wasUsed[i] = false;
 			}
-			freeRegisters[STACK_POINTER] = false; // more later
+			freeRegisters[STATIC_POINTER] = false;
+			freeRegisters[FRAME_POINTER] = false;
+			freeRegisters[STACK_POINTER] = false;
 			freeRegisters[CONSTANT_BASE] = false;
 			freeRegisters[VARIABLE_BASE] = false;
 		}
