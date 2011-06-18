@@ -2628,26 +2628,29 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return;
 		}
 
+		// Define 'this'
 		int tupleReg = codegen.loadAddress(tuple);
 		codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, procedure.activationSize());
 		codegen.gen2Address(STO, tupleReg, INDXD, STACK_POINTER, 6);
 		codegen.freeTemp(DREG, tupleReg);
 		
+		// Keep a link through the call stack
 		int levelDifference = currentLevel().value() - procedure.semanticLevel();
-		Location persistedStaticInNewFrame = new Location(INDXD, STACK_POINTER, 2);
+		Location staticLink = new Location(INDXD, STACK_POINTER, 2);
 		if(levelDifference < 1) {
-			codegen.gen2Address(STO, FRAME_POINTER, persistedStaticInNewFrame);
+			codegen.gen2Address(STO, FRAME_POINTER, staticLink);
 		}
 		else if(levelDifference == 1) {
-			codegen.gen2Address(STO, STATIC_POINTER, persistedStaticInNewFrame);
+			codegen.gen2Address(STO, STATIC_POINTER, staticLink);
 		}
 		else if(levelDifference > 1) {
 			for(int i = 0; i < levelDifference - 1; i++) {
 				codegen.gen2Address(LD, STATIC_POINTER, INDXD, STATIC_POINTER, 2);
 			}
-			codegen.gen2Address(STO, STATIC_POINTER, persistedStaticInNewFrame);
+			codegen.gen2Address(STO, STATIC_POINTER, staticLink);
 		}
 
+		// Call procedure
 		procedure.call(arguments, codegen, err);
 	}
 	
@@ -2665,7 +2668,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * @return this, the tuple parent of the current procedure.
+	 * @return this, the parent tuple of the current procedure.
 	 **************************************************************************/
 	VariableExpression currentProcedureThis(){
 		return new VariableExpression(currentProcedure.parentTupleType(), currentProcedure.semanticLevel(), 6, INDIRECT);
