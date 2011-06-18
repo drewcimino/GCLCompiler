@@ -1719,6 +1719,8 @@ abstract class GCLError {
 			"ERROR -> Procedure invoked incorrectly. ");
 	static final GCLError INVALID_RETURN = new Value(21,
 			"ERROR -> Cannot return value from the global level. ");
+	static final GCLError MUST_DEFINE_PROCEDURE_LOCALLY = new Value(22,
+			"ERROR -> Procedures must be defined in the scope of their tuple. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(91,
@@ -2564,6 +2566,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	SymbolTable openProcedureDefinition(final Identifier tupleId, final Identifier procedureId, final SymbolTable outerScope){
 				
+		SymbolTable.Entry tupleEntry = outerScope.lookupIdentifier(tupleId);
+		if(tupleEntry.module() != SymbolTable.currentModule()){
+			err.semanticError(GCLError.MUST_DEFINE_PROCEDURE_LOCALLY);
+			return SymbolTable.unchained();
+		}
 		SymbolTable tupleScope = tupleScope(semanticValue(outerScope, tupleId));
 		SemanticItem procedureItem = semanticValue(tupleScope, procedureId);
 		if(procedureItem instanceof GeneralError){ // complain once
@@ -2624,7 +2631,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 
 		int tupleReg = codegen.loadAddress(tuple);
 		codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, procedure.activationSize());
-		codegen.gen2Address(STO, tupleReg, INDXD, STACK_POINTER, 6); //TODO switched to frameptr
+		codegen.gen2Address(STO, tupleReg, INDXD, STACK_POINTER, 6);
 		codegen.freeTemp(DREG, tupleReg);
 		
 		int levelDifference = currentLevel().value() - procedure.semanticLevel();
@@ -2689,8 +2696,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	TypeDescriptor declareRangeType(final ConstantExpression lowerBound, final ConstantExpression upperBound, final TypeDescriptor baseType){
 		
-		boolean valid = true;
+		if(lowerBound instanceof GeneralError || upperBound instanceof GeneralError || baseType instanceof GeneralError){
+			return NO_TYPE;
+		}
 		
+		boolean valid = true;
 		// complain on type mismatch
 		if(!lowerBound.type().isCompatible(baseType)){
 			valid = false;
@@ -2795,6 +2805,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression tupleComponent(VariableExpression tupleExpression, Identifier fieldName){
 		
+		if(tupleExpression instanceof GeneralError){
+			return new ErrorExpression("$ Bad tuple expression");
+		}
+		
 		TupleType tupleType = tupleExpression.type().expectTupleType(err);
 		TypeDescriptor fieldType;
 		int fieldInset;
@@ -2852,6 +2866,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
+	 * Retrieves the tuple scope and complains if it is not in the current module
+	 *  
 	 * @param tupleTypeOrInstance Either a TupleType or an expression with type, TupleType
 	 * @return the tuple scope of either a tuple type or instance
 	 **************************************************************************/
