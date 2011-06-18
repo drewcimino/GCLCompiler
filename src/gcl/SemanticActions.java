@@ -1033,7 +1033,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 		if(arguments.hasNext()){
 			err.semanticError(GCLError.INVALID_ARGUMENTS, "Too many parameters passed.");
 		}
-		codegen.genJumpSubroutine(STATIC_POINTER, "P" + label);
+		codegen.genJumpSubroutine(STATIC_POINTER, label);
 		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
 		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, activationSize);
 	}
@@ -2510,7 +2510,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expression) {
 		
 		complainIfDefinedHere(scope, id);
-		codegen.buildOperands(expression);
 		SymbolTable.Entry constant = scope.newEntry("constant", id, expression);
 		CompilerOptions.message("Entering: " + constant);
 	}

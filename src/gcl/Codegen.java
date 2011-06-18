@@ -524,8 +524,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param staticPointer saved previous location before jump.
 	 * @param label name of the label to jump to.
 	 */
-	public void genJumpSubroutine(final int staticPointer, final String label) {
-		writeFiles(new JumpSubRoutine(JSR, staticPointer, label));
+	public void genJumpSubroutine(final int staticPointer, final int label) {
+		writeFiles(new JumpSubRoutine(JSR, staticPointer, "P" + label));
 	}
 
 	/** Generate the startup allocation code */
