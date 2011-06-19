@@ -514,7 +514,7 @@ subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
 	.)
 	{
 		"[" expression<^subscript, scope> "]"
-		(. result = semantic.subscript(result.expectVariableExpression(err), subscript); .) |
+		(. result = semantic.subscript(result.expectVariableExpression(err), subscript); semantic.insertComment("}"); .) |
 		"@" identifier
 		(.
 			String component = currentToken().spelling();

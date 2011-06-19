@@ -532,7 +532,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	public void genCodePreamble() {
 		gen2Address(LDA, VARIABLE_BASE, "V1");
 		gen2Address(LDA, CONSTANT_BASE, "C1");
-		gen2Address(LD, STACK_POINTER, IMMED, 0, 16000);
+		gen2Address(LD, STACK_POINTER, IMMED, 0, 32766);
 		gen2Address(LD, FRAME_POINTER, DREG, STACK_POINTER, UNUSED);
 		gen2Address(LD, STATIC_POINTER, DREG, STACK_POINTER, UNUSED);
 	}

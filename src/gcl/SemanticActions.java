@@ -1018,6 +1018,11 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 	 * @param err error stream on which to complain
 	 */
 	public void call(final ExpressionList argumentList, final Codegen codegen, final GCLErrorStream err){
+		
+		codegen.genJumpSubroutine(STATIC_POINTER, label);
+		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
+		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, activationSize);
+		
 		Iterator<Expression> arguments = argumentList.elements();
 		for(Loader argumentLoader : parameters){
 			if(arguments.hasNext()){
@@ -1033,9 +1038,8 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 		if(arguments.hasNext()){
 			err.semanticError(GCLError.INVALID_ARGUMENTS, "Too many parameters passed.");
 		}
-		codegen.genJumpSubroutine(STATIC_POINTER, label);
-		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
-		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, activationSize);
+		
+		codegen.genCodeComment("}");
 	}
 	
 	/**
@@ -1049,7 +1053,9 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 		codegen.gen2Address(LDA, FRAME_POINTER, INDXD, STACK_POINTER, 0);
 		codegen.gen2Address(STO, STATIC_POINTER , INDXD, FRAME_POINTER, 4);
 		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
-		codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, localDataSize-DEFAULT_FRAME_SIZE);
+		if(localDataSize-DEFAULT_FRAME_SIZE != 0){ // optimization
+			codegen.gen2Address(IS, STACK_POINTER, IMMED, UNUSED, localDataSize-DEFAULT_FRAME_SIZE);	
+		}
 		codegen.genPushPopToStack(PUSH);
 	}
 
@@ -1059,7 +1065,10 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 	 */
 	public void generateUnlinkCode(final Codegen codegen) {
 		codegen.genLabel('U', label);
-		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, localDataSize - DEFAULT_FRAME_SIZE);
+		codegen.genPushPopToStack(POP);
+		if(localDataSize-DEFAULT_FRAME_SIZE != 0){ // optimization
+			codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, localDataSize - DEFAULT_FRAME_SIZE);
+		}
 		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 4);
 		codegen.gen2Address(LD, FRAME_POINTER, INDXD, FRAME_POINTER, 0);
 		codegen.gen1Address(JMP, IREG, STATIC_POINTER, 0);
@@ -2564,7 +2573,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @return scope of the procedure to be defined
 	 **************************************************************************/
 	SymbolTable openProcedureDefinition(final Identifier tupleId, final Identifier procedureId, final SymbolTable outerScope){
-				
+		
 		SymbolTable.Entry tupleEntry = outerScope.lookupIdentifier(tupleId);
 		if(tupleEntry.module() != SymbolTable.currentModule()){
 			err.semanticError(GCLError.MUST_DEFINE_PROCEDURE_LOCALLY);
@@ -2627,6 +2636,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			err.semanticError(GCLError.PROCEDURE_NOT_DEFINED); 
 			return;
 		}
+		
+		insertComment("call {");
 
 		// Define 'this'
 		int tupleReg = codegen.loadAddress(tuple);
@@ -2738,6 +2749,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression subscript(VariableExpression arrayExpression, Expression subscript){
 		
+		insertComment("arrayAccess {");
 		if(arrayExpression instanceof GeneralError || subscript instanceof GeneralError){
 			return new ErrorExpression("$ Incompatible Types.");
 		}

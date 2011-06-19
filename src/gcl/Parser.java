@@ -847,7 +847,7 @@ public class Parser {
 				Get();
 				subscript = expression(scope);
 				Expect(18);
-				result = semantic.subscript(result.expectVariableExpression(err), subscript); 
+				result = semantic.subscript(result.expectVariableExpression(err), subscript); semantic.insertComment("}"); 
 			} else {
 				Get();
 				Expect(1);
