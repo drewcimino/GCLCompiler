@@ -560,7 +560,7 @@ public class Parser {
 
 	Expression  variableAccessEtc(SymbolTable scope) {
 		Expression  result;
-		SemanticItem workValue = null; 
+		semantic.insertComment("variable access{"); SemanticItem workValue = null; 
 		if (la.kind == 1) {
 			workValue = qualifiedIdentifier(scope);
 		} else if (la.kind == 55) {
@@ -568,6 +568,7 @@ public class Parser {
 			workValue = semantic.currentProcedureThis(); 
 		} else SynErr(74);
 		result = subsAndCompons(workValue, scope);
+		semantic.insertComment("}"); 
 		return result;
 	}
 
@@ -847,7 +848,7 @@ public class Parser {
 				Get();
 				subscript = expression(scope);
 				Expect(18);
-				result = semantic.subscript(result.expectVariableExpression(err), subscript); semantic.insertComment("}"); 
+				result = semantic.subscript(result.expectVariableExpression(err), subscript); 
 			} else {
 				Get();
 				Expect(1);

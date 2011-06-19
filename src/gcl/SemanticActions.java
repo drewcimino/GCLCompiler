@@ -706,7 +706,7 @@ class AssignRecord extends SemanticItem {
 	 * @return true if there are the same number of operands on the left and
 	 *         right and the types are compatible, etc.
 	 */
-	public boolean verify(final SemanticActions.GCLErrorStream err) {
+	public boolean verify(final Codegen codegen, final GCLErrorStream err) {
 		boolean result = true;
 		if (lhs.size() != rhs.size()) {
 			result = false;
@@ -714,18 +714,22 @@ class AssignRecord extends SemanticItem {
 		}
 		else{
 			for(int variableIndex = 0; variableIndex < lhs.size(); variableIndex++){
-				// do not complain again for error expressions.
-				if(left(variableIndex) instanceof GeneralError || right(variableIndex) instanceof GeneralError){
+				if(left(variableIndex) instanceof GeneralError || right(variableIndex) instanceof GeneralError){ // complain once
 					continue;
 				}
 				if(!left(variableIndex).type().isCompatible(right(variableIndex).type())){
 					result = false;
 					err.semanticError(GCLError.TYPE_MISMATCH, left(variableIndex).type().toString() + " :=\n" + right(variableIndex).type().toString());
 				}
-				else if (left(variableIndex).type() instanceof RangeType && right(variableIndex) instanceof ConstantExpression){
-					RangeType leftRangeType = left(variableIndex).type().expectRangeType(err);
-					ConstantExpression rightConstant = right(variableIndex).expectConstantExpression(err);
-					result = leftRangeType.constantFolding(rightConstant, err);
+				else if (left(variableIndex).type() instanceof RangeType){
+					if(right(variableIndex) instanceof ConstantExpression){
+						RangeType leftRangeType = left(variableIndex).type().expectRangeType(err);
+						ConstantExpression rightConstant = right(variableIndex).expectConstantExpression(err);
+						result = leftRangeType.constantFolding(rightConstant, err);	
+					}
+					else{
+						codegen.gen2Address(Codegen.TRNG, codegen.loadRegister(right(variableIndex)), left(variableIndex).type().expectRangeType(err).location());
+					}
 				}
 			}
 		}
@@ -2060,7 +2064,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		
 		int i;
 		// part 1. checks and optimizations
-		if (!expressions.verify(err)) {
+		if (!expressions.verify(codegen, err)) {
 			return;
 		}
 		int entries = expressions.size(); // number of entries to process
@@ -2079,10 +2083,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		for (i = entries - 1; i >= 0; --i){
 			Expression rightExpression = expressions.right(i);
 			Expression leftExpression = expressions.left(i);
-			// runtime bounds check.
-			if (leftExpression.type() instanceof RangeType && !(rightExpression instanceof ConstantExpression)){
-				codegen.gen2Address(TRNG, codegen.loadRegister(rightExpression), leftExpression.type().expectRangeType(err).location());
-			}
 			if (rightExpression.needsToBePushed()){
 				popExpression(leftExpression);
 			} else { // the item wasn't pushed, so normal copy
@@ -2749,7 +2749,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	Expression subscript(VariableExpression arrayExpression, Expression subscript){
 		
-		insertComment("arrayAccess {");
 		if(arrayExpression instanceof GeneralError || subscript instanceof GeneralError){
 			return new ErrorExpression("$ Incompatible Types.");
 		}

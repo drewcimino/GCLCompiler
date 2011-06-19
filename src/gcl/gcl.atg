@@ -499,12 +499,12 @@ validIdentifier<^String result>
 /*----------------------------------------------------------*/
 variableAccessEtc<^Expression result, SymbolTable scope>
 =
-	(. SemanticItem workValue = null; .)
+	(. semantic.insertComment("variable access{"); SemanticItem workValue = null; .)
 	(
 		qualifiedIdentifier<^workValue, scope> |
 		"this" (. workValue = semantic.currentProcedureThis(); .)
 	)
-	subsAndCompons<^result, workValue, scope>.
+	subsAndCompons<^result, workValue, scope> (. semantic.insertComment("}"); .).
 /*----------------------------------------------------------*/
 subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
 =
@@ -514,7 +514,7 @@ subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
 	.)
 	{
 		"[" expression<^subscript, scope> "]"
-		(. result = semantic.subscript(result.expectVariableExpression(err), subscript); semantic.insertComment("}"); .) |
+		(. result = semantic.subscript(result.expectVariableExpression(err), subscript); .) |
 		"@" identifier
 		(.
 			String component = currentToken().spelling();

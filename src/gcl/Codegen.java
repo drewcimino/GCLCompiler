@@ -130,7 +130,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public Location buildOperands(final MaccSaveable semanticItem) {
 		if (semanticItem == null || semanticItem instanceof GeneralError){
-			return new Location(DREG, 0, 0);
+			return new Location(DREG, UNUSED, UNUSED);
 		}
 		if (semanticItem instanceof ConstantLike){
 			return constants.insertConstant((ConstantLike) semanticItem);
@@ -156,12 +156,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			base = variable.offset();
 			displacement = UNUSED;
 		}
-		else { // its level > 1;
-			int levelDifference = currentLevel.value() - itsLevel;
-			if(levelDifference == 0){
+		else { // procedure scope
+			int diff = currentLevel.value() - itsLevel;
+			if(diff == 0){
 				base = FRAME_POINTER;
 			}
-			else if(levelDifference == 1){
+			else if(diff == 1){
 				base = STATIC_POINTER;
 			}
 			else{

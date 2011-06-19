@@ -333,7 +333,7 @@ Cross reference list:
 
 59 terminals
 117 symbols
-377 nodes
+378 nodes
 11 sets
 Symbol Table:
 ------------
@@ -454,8 +454,8 @@ Symbol Table:
  46 addOperator    nt   false   336 false   464 fixedToken
  47 factor         nt   true    299 false   445 fixedToken
  48 multiplyOper   nt   false   342 false   469 fixedToken
- 49 booleanConst   nt   false   375 false   526 fixedToken
- 50 subsAndCompo   nt   true    362 true    509 fixedToken
+ 49 booleanConst   nt   false   376 false   526 fixedToken
+ 50 subsAndCompo   nt   true    363 true    509 fixedToken
 
 Literal Tokens:
 --------------
