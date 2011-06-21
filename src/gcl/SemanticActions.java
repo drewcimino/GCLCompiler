@@ -2337,7 +2337,8 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		
 		Expression result = compareExpression(codegen.atInset(left, 0), op, codegen.atInset(right, 0));
 		for(int inset = INT_SIZE; inset < left.type().size(); inset += INT_SIZE){
-			result = andExpression(result, compareExpression(codegen.atInset(left, inset), op, codegen.atInset(right, inset)));
+			result = (op == RelationalOperator.EQUAL) ? andExpression(result, compareExpression(codegen.atInset(left, inset), op, codegen.atInset(right, inset))) :
+														orExpression(result, compareExpression(codegen.atInset(left, inset), op, codegen.atInset(right, inset)));
 		}
 		return result;
 	}
