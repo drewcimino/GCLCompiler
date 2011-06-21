@@ -18,8 +18,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	private Stack<RegisterSet> savedRegisters = new Stack<RegisterSet>();
 	// Honors Code
 	private FileOutputStream objfile;
-	private List<Instruction> instructionList = new ArrayList<Instruction>(); // Collection of instructions
+	private List<Instruction> instructionList = new ArrayList<Instruction>(); // List of instructions
 	private Hashtable<String, Integer> definedLabels = new Hashtable<String, Integer>(); // Label definitions String name -> int instructionIndex
+	Integer locationCounter = 0; // Instruction Counter
 
 	Codegen(final SemanticActions.GCLErrorStream err) {
 		this.err = err;
@@ -284,30 +285,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/**
-	 * Replaces labels with offsets and then writes codefile and objfile.
+	 * Replaces labels with offsets and then produces output
 	 */
 	public void writeInstructionList(){
-		defineLabelOffsets();
-		defineLabelReferenceAndOutput();
-	}
-	
-	/**
-	 * first pass: defines memory offsets of labels
-	 */
-	private void defineLabelOffsets(){
-		Integer instructionOffset = 0;
-		for(Instruction instruction : instructionList){
-			if(instruction instanceof Label){
-				definedLabels.put(((Label)instruction).name(), instructionOffset);
-			}
-			instructionOffset += instruction.maccSize();
-		}
-	}
-	
-	/**
-	 * second pass: define label reference offsets and output code.
-	 */
-	private void defineLabelReferenceAndOutput(){
 		Integer offset = null;
 		for(Instruction instruction : instructionList){
 			if(instruction instanceof LabelReference){
@@ -333,6 +313,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private void writeFiles(final Instruction instruction) {
 		instructionList.add(instruction);
+		locationCounter += instruction.maccSize();
 		CompilerOptions.listCode("$ " + instruction.samCode());
 	}
 
@@ -473,13 +454,15 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/**
-	 * Generate a label
+	 * Generate a label and puts it in the hash map with the current location counter
 	 *
 	 * @param prefix the one character prefix
 	 * @param offset the integer value of the label
 	 */
 	public void genLabel(final char prefix, final int offset) {
-		writeFiles(new Label(LABEL_DIRECTIVE, prefix + String.valueOf(offset)));
+		Label instruction = new Label(LABEL_DIRECTIVE, prefix + String.valueOf(offset)); 
+		definedLabels.put(instruction.name(), locationCounter);
+		writeFiles(instruction);
 	}
 
 	/**
