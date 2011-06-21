@@ -160,7 +160,7 @@ abstract class Operator extends SemanticItem implements Mnemonic {
 	}
 	
 	/**
-	 * Tells the caller if the operands are valid and complains if necessary.
+	 * Tells the caller if the operands are valid and complains if necessary.<br/>
 	 * NOTE: It is then the callers responsibility to return an ErrorExpression.
 	 * 
 	 * @param left operand to the left.
@@ -169,6 +169,7 @@ abstract class Operator extends SemanticItem implements Mnemonic {
 	 * @return true if the operands are valid; false otherwise.
 	 */
 	public abstract boolean validOperands(Expression left, Expression right, GCLErrorStream err);
+	
 	/**
 	 * @param left operand to the left.
 	 * @param right operand to the right
@@ -220,66 +221,37 @@ abstract class RelationalOperator extends Operator {
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() > ((ConstantExpression)right).value()) ? 1: 0);
 		}
-		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
-			if(left instanceof GeneralError || right instanceof GeneralError){
-				return false;
-			}
-			if(!operandsIntIntOrBoolBool(left, right)){
-				err.semanticError(GCLError.TYPE_MISMATCH, "Greater operator expected same type");
-				return false;
-			}
-			return true;
-		}
 	};
 	public static final RelationalOperator GREATER_OR_EQUAL = new RelationalOperator("greaterorequal", JGE){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() >= ((ConstantExpression)right).value()) ? 1: 0);
-		}
-		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
-			if(left instanceof GeneralError || right instanceof GeneralError){
-				return false;
-			}
-			if(!operandsIntIntOrBoolBool(left, right)){
-				err.semanticError(GCLError.TYPE_MISMATCH, "GreaterEqual operator expected same type");
-				return false;
-			}
-			return true;
 		}
 	};
 	public static final RelationalOperator LESS = new RelationalOperator("less", JLT){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() < ((ConstantExpression)right).value()) ? 1: 0);
 		}
-		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
-			if(left instanceof GeneralError || right instanceof GeneralError){
-				return false;
-			}
-			if(!operandsIntIntOrBoolBool(left, right)){
-				err.semanticError(GCLError.TYPE_MISMATCH, "Less operator expected same type");
-				return false;
-			}
-			return true;
-		}
 	};
 	public static final RelationalOperator LESS_OR_EQUAL = new RelationalOperator("lessorequal", JLE){
 		public ConstantExpression constantFolding(ConstantExpression left, ConstantExpression right){
 			return new ConstantExpression(BooleanType.BOOLEAN_TYPE, (((ConstantExpression)left).value() <= ((ConstantExpression)right).value()) ? 1: 0);
 		}
-		public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
-			if(left instanceof GeneralError || right instanceof GeneralError){
-				return false;
-			}
-			if(!operandsIntIntOrBoolBool(left, right)){
-				err.semanticError(GCLError.TYPE_MISMATCH, "LessEqual operator expected same type");
-				return false;
-			}
-			return true;
-		}
 	};
 	
-	private static boolean operandsIntIntOrBoolBool(Expression left, Expression right){
-		return (left.type().isCompatible(IntegerType.INTEGER_TYPE) && right.type().isCompatible(IntegerType.INTEGER_TYPE)) ||
-			   (left.type().isCompatible(BooleanType.BOOLEAN_TYPE) && right.type().isCompatible(BooleanType.BOOLEAN_TYPE));
+	public boolean validOperands(Expression left, Expression right, GCLErrorStream err){
+		if(left instanceof GeneralError || right instanceof GeneralError){
+			return false;
+		}
+		if(!((left.type().isCompatible(IntegerType.INTEGER_TYPE) || left.type().isCompatible(BooleanType.BOOLEAN_TYPE)) &&
+			 (right.type().isCompatible(IntegerType.INTEGER_TYPE) || right.type().isCompatible(BooleanType.BOOLEAN_TYPE)))){
+			err.semanticError(GCLError.INVALID_TYPE, "Expected boolean or integer");
+			return false;
+		}
+		if(!left.type().isCompatible(right.type())){
+			err.semanticError(GCLError.TYPE_MISMATCH);
+			return false;
+		}
+		return true;
 	}
 
 	private RelationalOperator(final String op, final SamOp opcode) {
@@ -719,7 +691,7 @@ class AssignRecord extends SemanticItem {
 				}
 				if(!left(variableIndex).type().isCompatible(right(variableIndex).type())){
 					result = false;
-					err.semanticError(GCLError.TYPE_MISMATCH, left(variableIndex).type().toString() + " :=\n" + right(variableIndex).type().toString());
+					err.semanticError(GCLError.TYPE_MISMATCH);
 				}
 				else if (left(variableIndex).type() instanceof RangeType){
 					if(right(variableIndex) instanceof ConstantExpression){
@@ -989,7 +961,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 			return new VariableExpression(type, semanticLevel(), offset, INDIRECT);
 		}
 		if(kind == ParameterKind.VALUE){
-			if(type.size() > 2){// TODO possibly check instanceof tupletype
+			if(type.size() > 2){
 				parameterLoader = new BlockLoader(type, offset);
 			}
 			else{
@@ -1023,10 +995,6 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 	 */
 	public void call(final ExpressionList argumentList, final Codegen codegen, final GCLErrorStream err){
 		
-		codegen.genJumpSubroutine(STATIC_POINTER, label);
-		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
-		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, activationSize);
-		
 		Iterator<Expression> arguments = argumentList.elements();
 		for(Loader argumentLoader : parameters){
 			if(arguments.hasNext()){
@@ -1044,6 +1012,10 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 		}
 		
 		codegen.genCodeComment("}");
+		
+		codegen.genJumpSubroutine(STATIC_POINTER, label);
+		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
+		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, activationSize);
 	}
 	
 	/**
@@ -1734,6 +1706,8 @@ abstract class GCLError {
 			"ERROR -> Cannot return value from the global level. ");
 	static final GCLError MUST_DEFINE_PROCEDURE_LOCALLY = new Value(22,
 			"ERROR -> Procedures must be defined in the scope of their tuple. ");
+	static final GCLError INVALID_TYPE = new Value(23,
+			"ERROR -> Invalid type. ");
 		
 	// The following are compiler errors. Repair them.
 	static final GCLError ILLEGAL_LOAD = new Value(91,
@@ -1929,9 +1903,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			codegen.gen2Address(LDA, reg, mode, base, displacement);
 		}
 		codegen.gen2Address(LD, reg + 1, IMMED, UNUSED, size);
-		Location destinationLocation = codegen
-				.buildOperands(destination);
+		Location destinationLocation = codegen.buildOperands(destination);
 		codegen.gen2Address(BKT, reg, destinationLocation);
+		//codegen.gen2Address(BKT, reg, mode, base, displacement);
 		codegen.freeTemp(DREG, reg);
 		codegen.freeTemp(destinationLocation);
 	}
@@ -1963,15 +1937,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if (destination.type().size() == INT_SIZE) {
 			int reg = codegen.getTemp(1);
 			codegen.genPopRegister(reg);
-			Location destinationLocation = codegen
-					.buildOperands(destination);
+			Location destinationLocation = codegen.buildOperands(destination);
 			codegen.gen2Address(STO, reg, destinationLocation);
 			codegen.freeTemp(DREG, reg);
 			codegen.freeTemp(destinationLocation);
 		} else { // blockmove
 			moveBlock(IREG, STACK_POINTER, UNUSED, destination);
-			codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, destination
-					.type().size());
+			codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, destination.type().size());
 		}
 	}
 
@@ -2336,18 +2308,38 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return new ErrorExpression("$ Incompatible Types");
 		}
 		if (left instanceof ConstantExpression && right instanceof ConstantExpression){
-			op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
+			return op.constantFolding((ConstantExpression)left, (ConstantExpression)right);
 		}
-		int booleanreg = codegen.getTemp(1);
-		int resultreg = codegen.loadRegister(left);
+		if(left.type().size() > INT_SIZE){ // block comparison
+			return compareBlockExpression(left, op, right);
+		}
+		int booleanReg = codegen.getTemp(1);
+		int resultReg = codegen.loadRegister(left);
 		Location rightLocation = codegen.buildOperands(right);
-		codegen.gen2Address(LD, booleanreg, IMMED, UNUSED, 1);
-		codegen.gen2Address(IC, resultreg, rightLocation);
+		codegen.gen2Address(LD, booleanReg, IMMED, UNUSED, 1);
+		codegen.gen2Address(IC, resultReg, rightLocation);
 		codegen.gen1Address(op.opcode(), PCREL, UNUSED, 4);
-		codegen.gen2Address(LD, booleanreg, IMMED, UNUSED, 0);
-		codegen.freeTemp(DREG, resultreg);
+		codegen.gen2Address(LD, booleanReg, IMMED, UNUSED, 0);
+		codegen.freeTemp(DREG, resultReg);
 		codegen.freeTemp(rightLocation);
-		return new VariableExpression(BOOLEAN_TYPE, booleanreg, DIRECT); // temporary
+		return new VariableExpression(BOOLEAN_TYPE, booleanReg, DIRECT); // temporary
+	}
+	
+	/***************************************************************************
+	 * Generate code to compare two block expressions. Result (0-1) in Register.
+	 * 
+	 * @param left an expression (lhs)
+	 * @param op a relational operator
+	 * @param right an expression (rhs)
+	 * @return result expression -0(false) or 1(true) (in register)
+	 **************************************************************************/
+	private Expression compareBlockExpression(final Expression left, final RelationalOperator op, final Expression right){
+		
+		Expression result = compareExpression(codegen.atInset(left, 0), op, codegen.atInset(right, 0));
+		for(int inset = INT_SIZE; inset < left.type().size(); inset += INT_SIZE){
+			result = andExpression(result, compareExpression(codegen.atInset(left, inset), op, codegen.atInset(right, inset)));
+		}
+		return result;
 	}
 
 	/***************************************************************************
@@ -2636,8 +2628,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			err.semanticError(GCLError.PROCEDURE_NOT_DEFINED); 
 			return;
 		}
-		
-		insertComment("call {");
 
 		// Define 'this'
 		int tupleReg = codegen.loadAddress(tuple);
@@ -2767,7 +2757,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 					return new ErrorExpression("$ Subscript out of range.");
 				}
 				// inset value
-				int inset = (constantSubscript.value() - arrayType.subscriptType().lowerBound()) * arrayType.subscriptType().size();
+				int inset = (constantSubscript.value() - arrayType.subscriptType().lowerBound()) * arrayType.componentType().size();
 				// access value
 				if(arrayExpression.case1()){
 					return new VariableExpression(arrayType.componentType(), arrayExpression.semanticLevel(), arrayExpression.offset() + inset, DIRECT);
@@ -2793,12 +2783,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			else{
 				// bounds check
 				VariableExpression variableSubscript = subscript.expectVariableExpression(err);
+				int arrayRegister = codegen.loadAddress(arrayExpression);
 				int subscriptRegister = codegen.loadRegister(variableSubscript);
 				codegen.gen2Address(TRNG, subscriptRegister, arrayType.subscriptType().location());
 				// inset value (offset is stored in arrayRegister)
-				codegen.gen2Address(IS, subscriptRegister, arrayType.subscriptType().location());
+				codegen.gen2Address(IS, subscriptRegister, IMMED, UNUSED, arrayType.subscriptType().lowerBound());
 				codegen.gen2Address(IM, subscriptRegister, IMMED, UNUSED, arrayType.componentType().size());
-				int arrayRegister = codegen.loadAddress(arrayExpression);
 				codegen.gen2Address(IA, arrayRegister, DREG, subscriptRegister, UNUSED);
 				codegen.freeTemp(DREG, subscriptRegister);
 				// access value
