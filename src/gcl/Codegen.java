@@ -420,7 +420,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 	
 	/**
-	 * Pushes or Pops registers 0-11.
+	 * Pushes or Pops registers 0-10
 	 * 
 	 * @param opcode PUSH or POP
 	 */
@@ -450,7 +450,19 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param offset the integer value of the label
 	 */
 	public void genJumpLabel(final SamOp opcode, final char prefix, final int offset) {
-		writeFiles(new Jump(opcode, prefix + String.valueOf(offset)));
+		writeFiles(new JumpLabel(opcode, prefix + String.valueOf(offset)));
+	}
+	
+	/** TODO USE THIS AT COMPARE
+	 * Generate a jump to a relative location
+	 * 
+	 * @param opcode the jump instruction
+	 * @param mode a valid addressing mode for the operand of the instruction
+	 * @param base a register for the operand
+	 * @param displacement an offset for the operand
+	 */
+	public void genJumpLocation(final SamOp opcode, final Mode mode, final int base, final int displacement){
+		writeFiles(new JumpLocation(opcode, mode, base, displacement));
 	}
 
 	/**
@@ -743,7 +755,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public static final Mode IINDXD = new IINDXD();
 		public static final Mode PCREL = new PCREL();
 
-		public abstract String address(int base, int displaement);
+		public abstract String address(int base, int displacement);
 
 		public int bytesRequired(){ // number of bytes required for an instruction with this mode
 			assert bytesRequired==2 || bytesRequired==4;
@@ -1145,13 +1157,13 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	
 	/** Jump instruction.<br/>
 	 *  Must define an offset in the second pass. */
-	class Jump implements Instruction, LabelReference{
+	class JumpLabel implements Instruction, LabelReference{
 
 		private final SamOp opcode;
 		private final String label;
 		private BitSet maccCode;
 
-		public Jump(final SamOp opcode, final String label){
+		public JumpLabel(final SamOp opcode, final String label){
 			this.opcode = opcode;
 			this.label = label;
 		}
@@ -1180,6 +1192,39 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public String samCode() {
 			return (opcode.samCodeString() + label);
+		}
+	}
+	
+	/** Jump instruction. */
+	class JumpLocation implements Instruction{
+		
+		private final SamOp opcode;
+		private final Mode mode;
+		private final int base;
+		private final int displacement;
+		
+		public JumpLocation(final SamOp opcode, final Mode mode, final int base, final int displacement){
+			this.opcode = opcode;
+			this.mode = mode;
+			this.base = base;
+			this.displacement = displacement;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
+			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), mode.samCode(), base, displacement);
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return mode.bytesRequired();
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString() + mode.address(base, displacement);
 		}
 	}
 
