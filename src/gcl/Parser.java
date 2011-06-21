@@ -158,11 +158,13 @@ public class Parser {
 	}
 
 	void definitionPart(SymbolTable scope) {
+		semantic.openDefinitionPart(); 
 		while (StartOf(1)) {
 			while (!(StartOf(2))) {SynErr(62); Get();}
 			definition(scope);
 			ExpectWeak(9, 3);
 		}
+		semantic.closeDefinitionPart(); 
 	}
 
 	void block(SymbolTable scope) {

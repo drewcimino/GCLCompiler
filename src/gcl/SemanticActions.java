@@ -3,11 +3,13 @@ package gcl;
 import gcl.Codegen.*;
 import gcl.SemanticActions.GCLErrorStream;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Stack;
 import java.io.PrintWriter;
 
 //-------------------- Semantic Records ---------------------
@@ -1011,8 +1013,6 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 			err.semanticError(GCLError.INVALID_ARGUMENTS, "Too many parameters passed.");
 		}
 		
-		codegen.genCodeComment("}");
-		
 		codegen.genJumpSubroutine(STATIC_POINTER, label);
 		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
 		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, activationSize);
@@ -1768,6 +1768,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	private SemanticLevel currentLevel = new SemanticLevel();
 	private GCLErrorStream err = null;
 	private Procedure currentProcedure = new ErrorProcedure("$ Global level.");
+	private Stack<HashSet<Procedure>> procedureDeclarations = new Stack<HashSet<Procedure>>();
 
 	SemanticActions(final Codegen codeGenerator, final GCLErrorStream err) {
 		this.codegen = codeGenerator;
@@ -2542,6 +2543,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		
 		currentLevel.increment();
 		currentProcedure = new Procedure(currentProcedure, outerScope.openScope(false), codegen.getLabel(), currentLevel().value());
+		procedureDeclarations.peek().add(currentProcedure);
 		carrier.enter(currentProcedure, procedureId);
 		return currentProcedure.scope();
 	}
@@ -2625,10 +2627,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if(tuple instanceof GeneralError || procedure instanceof GeneralError){
 			return;
 		}
-		if(!procedure.defined()){
+		/*if(!procedure.defined()){
 			err.semanticError(GCLError.PROCEDURE_NOT_DEFINED); 
 			return;
-		}
+		}*/
 
 		// Define 'this'
 		int tupleReg = codegen.loadAddress(tuple);
@@ -2670,17 +2672,39 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * @return this, the parent tuple of the current procedure.
+	 * @return this, the parent tuple of the current procedure
 	 **************************************************************************/
 	VariableExpression currentProcedureThis(){
+		
 		return new VariableExpression(currentProcedure.parentTupleType(), currentProcedure.semanticLevel(), 6, INDIRECT);
 	}
 	
 	/***************************************************************************
-	 * Declare Array Type.
+	 * Creates a new HashSet for this definition part
+	 **************************************************************************/
+	void openDefinitionPart(){
+		
+		procedureDeclarations.push(new HashSet<Procedure>());
+	}
+
+	/***************************************************************************
+	 * Complains if a procedure is not defined properly
+	 **************************************************************************/
+	void closeDefinitionPart(){
+		
+		for(Procedure procedure : procedureDeclarations.pop()){
+			if(!procedure.defined()){
+				procedure.generateLinkCode(codegen);
+				err.semanticError(GCLError.PROCEDURE_NOT_DEFINED, procedure.toString());
+			}
+		}
+	}
+	
+	/***************************************************************************
+	 * Declare Array Type
 	 * 
-	 * @param subscripts Stack<RangeType> representing the successive dimensions bounds of this array.
-	 * @param componentType The type of elements this ArrayType contains.
+	 * @param subscripts Stack<RangeType> representing the successive dimensions bounds of this array
+	 * @param componentType The type of elements this ArrayType contains
 	 **************************************************************************/
 	TypeDescriptor declareArrayType(java.util.Stack<RangeType> subscripts, final TypeDescriptor componentType){
 		
@@ -2692,11 +2716,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Declare Range Type.
+	 * Declare Range Type
 	 * 
-	 * @param lowerBound ConstantExpression: lower bound of the range.
-	 * @param upperBound ConstantExpression: upper bound of the range.
-	 * @param baseType Must be same as lower and upper bounds.
+	 * @param lowerBound ConstantExpression: lower bound of the range
+	 * @param upperBound ConstantExpression: upper bound of the range
+	 * @param baseType Must be same as lower and upper bounds
 	 **************************************************************************/
 	TypeDescriptor declareRangeType(final ConstantExpression lowerBound, final ConstantExpression upperBound, final TypeDescriptor baseType){
 		
@@ -2732,11 +2756,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Subscript.
+	 * Subscript
 	 * 
-	 * @param arrayExpression an expression of type array.
-	 * @param subscript index within array.
-	 * @return an expression indicated by subscript from array.
+	 * @param arrayExpression an expression of type array
+	 * @param subscript index within array
+	 * @return an expression indicated by subscript from array
 	 **************************************************************************/
 	Expression subscript(VariableExpression arrayExpression, Expression subscript){
 		

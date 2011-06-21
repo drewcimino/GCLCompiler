@@ -68,7 +68,9 @@ block<SymbolTable scope>
 /*----------------------------------------------------------*/
 definitionPart<SymbolTable scope>
 =
-	{SYNC definition<scope> WEAK ";" }.
+	(. semantic.openDefinitionPart(); .)
+	{SYNC definition<scope> WEAK ";" }
+	(. semantic.closeDefinitionPart(); .).
 /*----------------------------------------------------------*/
 statementPart<SymbolTable scope> 
 = 

@@ -468,7 +468,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		writeFiles(new JumpLabel(opcode, prefix + String.valueOf(offset)));
 	}
 	
-	/** TODO USE THIS AT COMPARE
+	/**
 	 * Generate a jump to a relative location
 	 * 
 	 * @param opcode the jump instruction
