@@ -167,13 +167,28 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			else{
 				int reg = getTemp(1);
 				gen2Address(LD, reg, INDXD, STATIC_POINTER, 2);
-				gen2Address(LD, reg, INDXD, reg, 2);
+				for (int level = 0; level < diff-2; level++){
+					gen2Address(LD, reg, INDXD, reg, 2);
+				}
 				base = reg;
 			}
 			mode = isDirect ? INDXD : IINDXD;
 			displacement = variable.offset();
 		}
 		return new Location(mode, base, displacement);
+	}
+	
+	/**
+	 * @param source block expression in memory
+	 * @param inset displacement of target
+	 * @return temporary expression pointing to an 'integer' at an inset from source
+	 */
+	Expression atInset(final Expression source, final int inset){
+		
+		Location loc = buildOperands(source);
+		int sourceReg = getTemp(1);
+		gen2Address(LD, sourceReg, loc.mode, loc.base, loc.displacement + inset);
+		return new VariableExpression(IntegerType.INTEGER_TYPE, sourceReg, DIRECT);
 	}
 	
 	/**

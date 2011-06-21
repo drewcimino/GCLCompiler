@@ -406,7 +406,8 @@ relationalExpr<^Expression left, SymbolTable scope>
 =
 	simpleExpr<^left, scope>
 	[
-		relationalOperator<^op> simpleExpr<^right, scope>
+		relationalOperator<^op>
+		simpleExpr<^right, scope>
 		(. left = semantic.compareExpression(left, op, right); .)
 	].
 /*----------------------------------------------------------*/
@@ -499,12 +500,12 @@ validIdentifier<^String result>
 /*----------------------------------------------------------*/
 variableAccessEtc<^Expression result, SymbolTable scope>
 =
-	(. semantic.insertComment("variable access{"); SemanticItem workValue = null; .)
+	(. SemanticItem workValue = null; .)
 	(
 		qualifiedIdentifier<^workValue, scope> |
 		"this" (. workValue = semantic.currentProcedureThis(); .)
 	)
-	subsAndCompons<^result, workValue, scope> (. semantic.insertComment("}"); .).
+	subsAndCompons<^result, workValue, scope>.
 /*----------------------------------------------------------*/
 subsAndCompons<^Expression result, SemanticItem identifier, SymbolTable scope>
 =
