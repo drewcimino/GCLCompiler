@@ -2318,7 +2318,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		Location rightLocation = codegen.buildOperands(right);
 		codegen.gen2Address(LD, booleanReg, IMMED, UNUSED, 1);
 		codegen.gen2Address(IC, resultReg, rightLocation);
-		codegen.gen1Address(op.opcode(), PCREL, UNUSED, 4);
+		codegen.genJumpLocation(op.opcode(), PCREL, UNUSED, 4);
 		codegen.gen2Address(LD, booleanReg, IMMED, UNUSED, 0);
 		codegen.freeTemp(DREG, resultReg);
 		codegen.freeTemp(rightLocation);
