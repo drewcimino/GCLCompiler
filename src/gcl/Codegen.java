@@ -317,8 +317,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			}
 			codefile.println(instruction.samCode());
 			// TODO comment while testing sam code; uncomment while testing macc code.
-//			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
-//			catch (IOException e) { e.printStackTrace(); }
+			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
+			catch (IOException e) { e.printStackTrace(); }
 		}
 	}
 

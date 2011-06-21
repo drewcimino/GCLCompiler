@@ -845,7 +845,7 @@ class BlockLoader extends Loader{
 		int blockRegister = codegen.getTemp(2);
 		int sizeRegister = blockRegister +1;
 		Location parameterLocation = codegen.buildOperands(parameter);
-		codegen.gen2Address(LD, blockRegister, parameterLocation);
+		codegen.gen2Address(LDA, blockRegister, parameterLocation);
 		codegen.gen2Address(LD, sizeRegister, IMMED, UNUSED, size());
 		codegen.gen2Address(BKT, blockRegister, INDXD, STACK_POINTER, offset);
 		codegen.freeTemp(DREG, blockRegister);
@@ -1906,7 +1906,6 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		codegen.gen2Address(LD, reg + 1, IMMED, UNUSED, size);
 		Location destinationLocation = codegen.buildOperands(destination);
 		codegen.gen2Address(BKT, reg, destinationLocation);
-		//codegen.gen2Address(BKT, reg, mode, base, displacement);
 		codegen.freeTemp(DREG, reg);
 		codegen.freeTemp(destinationLocation);
 	}
@@ -2663,7 +2662,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void doReturn(){
 		
-		if(!currentLevel().isGlobal()){
+		if(currentLevel().value() > GLOBAL_LEVEL){
 			codegen.genJumpLabel(JMP, 'U', currentProcedure.label());
 		}
 		else{
