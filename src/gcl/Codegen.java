@@ -1322,10 +1322,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public int maccSize() {
-			if( value.maccString().length() % 2 == 0)
-				return value.maccString().length()+1;
-			else
-				return value.maccString().length()+2;
+			return value.size();
 		}
 
 		@Override
