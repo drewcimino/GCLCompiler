@@ -594,8 +594,8 @@ class VariableExpression extends Expression implements CodegenConstants {
 	}
 	
 	public boolean needsToBePushed() { // used by parallel assignment
-		return true; // TODO debugging only. why does the line below cause good sam code but bad output?
-//		return semanticLevel() > CPU_LEVEL || (semanticLevel() == CPU_LEVEL && !isDirect); // pushes globals and locals and indirect temporary
+		//return true; // TODO debugging only. why does the line below cause good sam code but bad output?
+		return semanticLevel() > CPU_LEVEL || (semanticLevel() == CPU_LEVEL && !isDirect); // pushes globals and locals and indirect temporary
 	}
 
 	/**
@@ -697,7 +697,7 @@ class AssignRecord extends SemanticItem {
 					if(right(variableIndex) instanceof ConstantExpression){
 						RangeType leftRangeType = left(variableIndex).type().expectRangeType(err);
 						ConstantExpression rightConstant = right(variableIndex).expectConstantExpression(err);
-						result = leftRangeType.constantFolding(rightConstant, err);	
+						result = leftRangeType.constantFolding(rightConstant, err) ? result : false;
 					}
 					else{
 						codegen.gen2Address(Codegen.TRNG, codegen.loadRegister(right(variableIndex)), left(variableIndex).type().expectRangeType(err).location());
