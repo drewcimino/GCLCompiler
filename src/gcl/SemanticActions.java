@@ -1013,7 +1013,7 @@ class Procedure extends SemanticItem implements CodegenConstants, Mnemonic{
 			err.semanticError(GCLError.INVALID_ARGUMENTS, "Too many parameters passed.");
 		}
 		
-		codegen.genJumpSubroutine(STATIC_POINTER, label);
+		codegen.genJumpSubroutine(label);
 		codegen.gen2Address(LD, STATIC_POINTER, INDXD, FRAME_POINTER, 2);
 		codegen.gen2Address(IA, STACK_POINTER, IMMED, UNUSED, activationSize);
 	}

@@ -401,17 +401,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		writeFiles(new TwoAddressLabel(opcode, reg, dmemLocation));
 	}
 
-	/**
-	 * Generate a shift instruction. These are also used for PUSH and POP
-	 *
-	 * @param opcode the operation code as defined in Mnemnonic
-	 * @param reg the register representing the first operand
-	 * @param amount an integer in the range 1..16
-	 */
-	public void genShiftInstruction(final SamOp opcode, final int reg, final int amount){
-		writeFiles(new Shift(opcode, reg, amount));
-	}
-
 	/** Set a bit of a word corresponding to a set of register numbers
 	 * @param regs a list of registers to transform.<br/> DO NOT REPEAT VALUES.
 	 * @return an integer with regs.length bits set
@@ -516,7 +505,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param number of bytes to skip
 	 */
 	public void genSkipDirective(final int value) {
-		writeFiles(new Skip(SKIP_DIRECTIVE, value));
+		writeFiles(new Skip(value));
 	}
 	
 	/**
@@ -529,13 +518,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	/**
-	 * Stores current program counter and jumps to label.
+	 * Stores current program counter in the static pointer and jumps to label.
 	 * 
-	 * @param staticPointer saved previous location before jump.
 	 * @param label name of the label to jump to.
 	 */
-	public void genJumpSubroutine(final int staticPointer, final int label) {
-		writeFiles(new JumpSubRoutine(JSR, staticPointer, "P" + label));
+	public void genJumpSubroutine(final int label) {
+		writeFiles(new TwoAddressLabel(JSR, STATIC_POINTER, "P" + label));
 	}
 
 	/** Generate the startup allocation code */
@@ -1114,31 +1102,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public String label();
 	}
 	
-	/** Comment instruction. Has no output in macc. */
-	class Comment implements Instruction{
-
-		private final String message;
-
-		public Comment(final String message){
-			this.message = message;
-		}
-
-		@Override
-		public BitSet maccCode() {
-			return new BitSet(0);
-		}
-
-		@Override
-		public int maccSize() {
-			return 0;
-		}
-
-		@Override
-		public String samCode() {
-			return ("% " + message);
-		}
-	}
-	
 	/** Label instruction. Has no output in macc. */
 	class Label implements Instruction{
 
@@ -1170,6 +1133,235 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		}
 	}
 	
+	/** Comment instruction. Has no output in macc. */
+	class Comment implements Instruction{
+
+		private final String message;
+
+		public Comment(final String message){
+			this.message = message;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			return new BitSet(0);
+		}
+
+		@Override
+		public int maccSize() {
+			return 0;
+		}
+
+		@Override
+		public String samCode() {
+			return ("% " + message);
+		}
+	}
+
+	/** Skip instruction. Allocates memory. */
+	class Skip implements Instruction{
+
+		private final int allocatedSize;
+
+		/**
+		 * @param allocatedSize in 2 word (4 byte) intervals.
+		 */
+		public Skip(final int allocatedSize){
+			this.allocatedSize = allocatedSize;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			return new BitSet(allocatedSize * 32);// TODO is this number right?
+		}
+
+		@Override
+		public int maccSize() {
+			return (allocatedSize * 2);// TODO is this number right?
+		}
+
+		@Override
+		public String samCode() {
+			return (SKIP_DIRECTIVE.samCodeString() + allocatedSize);// TODO is this number right?
+		}
+	}
+	
+	/** String directive instruction. */
+	class StringDirective implements Instruction{
+
+		private final SamOp opcode;
+		private final StringConstant value;
+
+		public StringDirective(final SamOp opcode, final StringConstant value){
+			this.opcode = opcode;
+			this.value = value;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(value.size()*8);
+			setBits(maccCode, value.maccString());
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return value.size();
+		}
+
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + value.samString());
+		}
+	}
+	
+	/** Int directive instruction. */
+	class IntDirective implements Instruction{
+
+		private final SamOp opcode;
+		private final int directive;
+		
+		public IntDirective(final SamOp opcode, final int directive){
+			this.opcode = opcode;
+			this.directive = directive;
+		}
+		
+		@Override
+		public String samCode() {
+			return (opcode.samCodeString() + String.valueOf(directive));
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(16);
+			setBits(maccCode, 0, 15, directive);
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+	}
+	
+	/** Push and Pop instructions. */
+	class PushPop implements Instruction{
+
+		private final SamOp opcode;
+		private final int reg;
+		private final int amount;
+
+		public PushPop(final SamOp opcode, final int reg, final int amount){
+			this.opcode = opcode;
+			this.reg = reg;
+			this.amount = amount;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(32);
+			setBits(maccCode, opcode.opCodeValue(), reg, opcode.specifier(), UNUSED, amount);
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 4;
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString() + DREG.address(reg, UNUSED) + ", " + amount;
+		}
+	}
+
+	/** Instruction with zero addresses. */
+	class ZeroAddress implements Instruction{
+
+		private final SamOp opcode;
+
+		public ZeroAddress(final SamOp opcode){
+			this.opcode = opcode;
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(16);
+			setBits(maccCode, opcode.opCodeValue(), UNUSED, UNUSED, UNUSED);
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString();
+		}
+	}
+	
+	/** Read Line or Write Line instruction with no address. */
+	class ZeroAddressIO implements Instruction{
+
+		private final SamOp opcode;
+		
+		public ZeroAddressIO(final SamOp opcode){
+			this.opcode = opcode;
+		}
+		
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(16);
+			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), UNUSED, UNUSED);
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return 2;
+		}
+
+		@Override
+		public String samCode() {
+			return opcode.samCodeString();
+		}
+	}
+
+	/** Instruction with one address. */
+	class OneAddress implements Instruction{
+
+		private final SamOp opcode;
+		private final Mode mode;
+		private final int base;
+		private final int displacement;
+
+		public OneAddress(final SamOp opcode, final Mode mode, final int base, final int displacement){
+			this.opcode = opcode;
+			this.mode = mode;
+			this.base = base;
+			this.displacement = displacement;
+		}
+
+		@Override
+		public String samCode(){
+			return (opcode.samCodeString() + mode.address(base, displacement));
+		}
+
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
+			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), mode.samCode(), base, displacement);
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return mode.bytesRequired();
+		}
+	}
+	
 	/** Jump instruction.<br/>
 	 *  Must define an offset in the second pass. */
 	class JumpToLabel implements Instruction, LabelReference{
@@ -1186,7 +1378,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
-			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), 0, 0, offset);
+			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), DMEM.samCode(), UNUSED, offset); // TODO DMEM or 0?
 			maccCode.set(20);
 		}
 		@Override
@@ -1240,185 +1432,6 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public String samCode() {
 			return opcode.samCodeString() + mode.address(base, displacement);
-		}
-	}
-
-	/** Skip instruction. Allocates memory. */
-	class Skip implements Instruction{
-
-		private final SamOp opcode;
-		private final int allocatedSize;
-
-		/**
-		 * @param allocatedSize in 2 word (4 byte) intervals.
-		 */
-		public Skip(final SamOp opcode, final int allocatedSize){
-			this.opcode = opcode;
-			this.allocatedSize = allocatedSize;
-		}
-
-		@Override
-		public BitSet maccCode() {
-			return new BitSet(allocatedSize * 32);
-		}
-
-		@Override
-		public int maccSize() {
-			return (allocatedSize * 2);
-		}
-
-		@Override
-		public String samCode() {
-			return (opcode.samCodeString() + allocatedSize);
-		}
-	}
-	
-	/** Int directive instruction. */
-	class IntDirective implements Instruction{
-
-		private final SamOp opcode;
-		private final int directive;
-		
-		public IntDirective(final SamOp opcode, final int directive){
-			this.opcode = opcode;
-			this.directive = directive;
-		}
-		
-		@Override
-		public String samCode() {
-			return (opcode.samCodeString() + String.valueOf(directive));
-		}
-
-		@Override
-		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(16);
-			setBits(maccCode, 0, 15, directive);
-			return maccCode;
-		}
-
-		@Override
-		public int maccSize() {
-			return 2;
-		}
-	}
-
-	/** String directive instruction. */
-	class StringDirective implements Instruction{
-
-		private final SamOp opcode;
-		private final StringConstant value;
-
-		public StringDirective(final SamOp opcode, final StringConstant value){
-			this.opcode = opcode;
-			this.value = value;
-		}
-
-		@Override
-		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(value.size()*8);
-			setBits(maccCode, value.maccString());
-			return maccCode;
-		}
-
-		@Override
-		public int maccSize() {
-			return value.size();
-		}
-
-		@Override
-		public String samCode() {
-			return (opcode.samCodeString() + value.samString());
-		}
-	}
-	
-	/** Shift instructions. */
-	class Shift implements Instruction{
-
-		private final SamOp opcode;
-		private final int reg;
-		private final int amount;
-		
-		public Shift(final SamOp opcode, final int reg, final int amount){
-			this.opcode = opcode;
-			this.reg = reg;
-			this.amount = amount;
-		}
-		
-		@Override
-		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(16);
-			setBits(maccCode, opcode.opCodeValue(), reg, opcode.specifier(), amount);
-			return maccCode;
-		}
-
-		@Override
-		public int maccSize() {
-			return 2;
-		}
-
-		@Override
-		public String samCode() {
-			return opcode.samCodeString() + "R" + reg + ", " + amount;
-		}
-	}
-
-	/** Instruction with zero addresses. */
-	class ZeroAddress implements Instruction{
-
-		private final SamOp opcode;
-
-		public ZeroAddress(final SamOp opcode){
-			this.opcode = opcode;
-		}
-
-		@Override
-		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(16);
-			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), 0, 0);
-			return maccCode;
-		}
-
-		@Override
-		public int maccSize() {
-			return 2;
-		}
-
-		@Override
-		public String samCode() {
-			return opcode.samCodeString();
-		}
-	}
-
-	/** Instruction with one address. */
-	class OneAddress implements Instruction{
-
-		private final SamOp opcode;
-		private final Mode mode;
-		private final int base;
-		private final int displacement;
-
-		public OneAddress(final SamOp opcode, final Mode mode, final int base, final int displacement){
-			this.opcode = opcode;
-			this.mode = mode;
-			this.base = base;
-			this.displacement = displacement;
-		}
-
-		@Override
-		public String samCode(){
-			return (opcode.samCodeString() + mode.address(base, displacement));
-		}
-
-		@Override
-		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
-			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), mode.samCode(), base, displacement);
-			return maccCode;
-		}
-
-		@Override
-		public int maccSize() {
-			return mode.bytesRequired();
 		}
 	}
 
@@ -1478,7 +1491,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
-			setBits(maccCode, opcode.opCodeValue(), reg, Mode.DMEM.samCode(), 0, offset);
+			setBits(maccCode, opcode.opCodeValue(), reg, DMEM.samCode(), UNUSED, offset);
 		}
 
 		@Override
@@ -1498,79 +1511,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public int maccSize() {
-			return Mode.DMEM.bytesRequired();
-		}
-	}
-	
-	/** Push and Pop instructions. */
-	class PushPop implements Instruction{
-
-		private final SamOp opcode;
-		private final int reg;
-		private final int amount;
-
-		public PushPop(final SamOp opcode, final int reg, final int amount){
-			this.opcode = opcode;
-			this.reg = reg;
-			this.amount = amount;
-		}
-
-		@Override
-		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(32);
-			setBits(maccCode, opcode.opCodeValue(), reg, opcode.specifier(), 0, amount);
-			return maccCode;
-		}
-
-		@Override
-		public int maccSize() {
 			return 4;
-		}
-
-		@Override
-		public String samCode() {
-			return opcode.samCodeString() + "R" + reg + ", " + amount;
-		}
-	}
-	
-	/** JumpSubRoutine instruction. Jumps to a subroutine and returns. */
-	class JumpSubRoutine implements Instruction, LabelReference{
-
-		private final SamOp opcode;
-		private final int staticPointer;
-		private final String label;
-		private BitSet maccCode;
-
-		public JumpSubRoutine(final SamOp opcode, final int staticPointer, final String label){
-			this.opcode = opcode;
-			this.staticPointer = staticPointer;
-			this.label = label;
-		}
-
-		@Override
-		public void defineOffset(int offset) {
-			maccCode = new BitSet(32);
-			setBits(maccCode, opcode.opCodeValue(), staticPointer, Mode.DMEM.samCode(), 0, offset);
-		}
-
-		@Override
-		public String label() {
-			return label;
-		}
-
-		@Override
-		public BitSet maccCode() {
-			return maccCode;
-		}
-
-		@Override
-		public int maccSize() {
-			return 4;
-		}
-
-		@Override
-		public String samCode() {
-			return JSR.samCodeString() + "R" + staticPointer + ", " + label;
 		}
 	}
 }
