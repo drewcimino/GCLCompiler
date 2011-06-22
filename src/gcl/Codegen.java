@@ -465,7 +465,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param offset the integer value of the label
 	 */
 	public void genJumpLabel(final SamOp opcode, final char prefix, final int offset) {
-		writeFiles(new JumpLabel(opcode, prefix + String.valueOf(offset)));
+		writeFiles(new JumpToLabel(opcode, prefix + String.valueOf(offset)));
 	}
 	
 	/**
@@ -477,7 +477,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param displacement an offset for the operand
 	 */
 	public void genJumpLocation(final SamOp opcode, final Mode mode, final int base, final int displacement){
-		writeFiles(new JumpLocation(opcode, mode, base, displacement));
+		writeFiles(new JumpToLocation(opcode, mode, base, displacement));
 	}
 
 	/**
@@ -1113,7 +1113,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		 */
 		public String label();
 	}
-
+	
 	/** Comment instruction. Has no output in macc. */
 	class Comment implements Instruction{
 
@@ -1172,13 +1172,13 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	
 	/** Jump instruction.<br/>
 	 *  Must define an offset in the second pass. */
-	class JumpLabel implements Instruction, LabelReference{
+	class JumpToLabel implements Instruction, LabelReference{
 
 		private final SamOp opcode;
 		private final String label;
 		private BitSet maccCode;
 
-		public JumpLabel(final SamOp opcode, final String label){
+		public JumpToLabel(final SamOp opcode, final String label){
 			this.opcode = opcode;
 			this.label = label;
 		}
@@ -1211,14 +1211,14 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 	
 	/** Jump instruction. */
-	class JumpLocation implements Instruction{
+	class JumpToLocation implements Instruction{
 		
 		private final SamOp opcode;
 		private final Mode mode;
 		private final int base;
 		private final int displacement;
 		
-		public JumpLocation(final SamOp opcode, final Mode mode, final int base, final int displacement){
+		public JumpToLocation(final SamOp opcode, final Mode mode, final int base, final int displacement){
 			this.opcode = opcode;
 			this.mode = mode;
 			this.base = base;
@@ -1444,7 +1444,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			if(opcode == Mnemonic.INC || opcode == Mnemonic.DEC){
 				return (opcode.samCodeString()+ mode.address(base, displacement) + ", " + ((reg == 0) ? 16 : reg) );
 			}
-			return (opcode.samCodeString() + "R" + reg + ", " + mode.address(base, displacement));
+			return (opcode.samCodeString() + DREG.address(reg, UNUSED) + ", " + mode.address(base, displacement));
 		}
 
 		@Override
@@ -1488,7 +1488,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		
 		@Override
 		public String samCode() {
-			return (opcode.samCodeString() + "R" + reg + ", " + label);
+			return (opcode.samCodeString() + DREG.address(reg, UNUSED) + ", " + label);
 		}
 		
 		@Override
