@@ -596,8 +596,7 @@ class VariableExpression extends Expression implements CodegenConstants {
 	}
 	
 	public boolean needsToBePushed() { // used by parallel assignment
-		//return true; // TODO debugging only. why does the line below cause good sam code but bad output?
-		return semanticLevel() > CPU_LEVEL || (semanticLevel() == CPU_LEVEL && !isDirect); // pushes globals and locals and indirect temporary
+		return semanticLevel() > CPU_LEVEL || (semanticLevel() == CPU_LEVEL && !isDirect);
 	}
 
 	/**

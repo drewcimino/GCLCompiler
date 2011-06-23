@@ -317,15 +317,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				}
 			}
 			codefile.println(instruction.samCode());
-			// TODO macc debugging
-//			for (Byte b : toByteArray(instruction.maccCode(), instruction.maccSize())){
-//				System.out.print(b.toString() + ", ");
-//			}
-//			System.out.println();
-			//System.out.println(" - " + instruction.maccCode());
 			// TODO comment while testing sam code; uncomment while testing macc code.
-//			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
-//			catch (IOException e) { e.printStackTrace(); }
+			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
+			catch (IOException e) { e.printStackTrace(); }
 		}
 	}
 
@@ -1033,9 +1027,27 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 * @param value integer value to be assigned to that range.
 	 */
 	private static void setBits(BitSet bits, int fromBit, int toBit, int value){
+		if(value < 0){
+			setBits(bits, fromBit, toBit, Integer.toBinaryString(value).substring(16));
+			return;
+		}
 		for(int i = fromBit; i <= toBit; ++i){
 			bits.set(i, (value % 2 == 1));
 			value = value >> 1;
+		}
+	}
+	
+	/**
+	 * Assigns the binary integer value of a String to bits on the range [fromBit, toBit]
+	 * 
+	 * @param bits BitSet to modify.
+	 * @param fromBit index of the starting bit to be modified.
+	 * @param toBit index of the ending bit to be modified.
+	 * @param binaryString binary string value to be assigned to that range.
+	 */
+	private static void setBits(BitSet bits, int fromBit, int toBit, String binaryString){
+		for(int characterIndex = binaryString.length()-1; fromBit <= toBit && characterIndex >= 0; characterIndex--, fromBit++){
+			bits.set(fromBit, (binaryString.charAt(characterIndex) == '1') ? true : false);
 		}
 	}
 	
@@ -1047,10 +1059,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	private static void setBits(BitSet bits, StringConstant value){
 		int bitSetIndex = 0;
-		for(;bitSetIndex < value.size() - value.maccString().length(); bitSetIndex++){
+		for(;bitSetIndex < value.size() - value.maccString().length(); bitSetIndex++){ // load nulls
 			setBits(bits, bitSetIndex*8, (bitSetIndex+1)*8-1, 0);
 		}
-		for(int stringIndex = 0; stringIndex < value.maccString().length(); stringIndex++, bitSetIndex++){
+		for(int stringIndex = 0; stringIndex < value.maccString().length(); stringIndex++, bitSetIndex++){ // load macc string
 			setBits(bits, bitSetIndex*8, (bitSetIndex+1)*8-1, value.maccString().charAt(value.maccString().length()-stringIndex-1));
 		}
 	}
@@ -1452,8 +1464,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
-			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), DMEM.samCode(), UNUSED, offset); // TODO DMEM or 0?
-			maccCode.set(20); // TODO check again
+			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), DMEM.samCode(), UNUSED, offset);
 		}
 		
 		@Override
@@ -1571,7 +1582,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
-			setBits(maccCode, opcode.opCodeValue(), reg, DMEM.samCode(), UNUSED, offset); // DMEM?
+			setBits(maccCode, opcode.opCodeValue(), reg, DMEM.samCode(), UNUSED, offset);
 		}
 
 		@Override
