@@ -171,6 +171,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				for (int level = 0; level < diff-2; level++){
 					gen2Address(LD, reg, INDXD, reg, 2);
 				}
+				freeTemp(DREG, reg);
 				base = reg;
 			}
 			mode = isDirect ? INDXD : IINDXD;
@@ -323,8 +324,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 //			System.out.println();
 			//System.out.println(" - " + instruction.maccCode());
 			// TODO comment while testing sam code; uncomment while testing macc code.
-			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
-			catch (IOException e) { e.printStackTrace(); }
+//			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
+//			catch (IOException e) { e.printStackTrace(); }
 		}
 	}
 
