@@ -11,6 +11,7 @@ class CompilerOptions {
 	public static boolean optimize = false;
 	public static boolean showSymbolTable = false;
 	public static boolean showMessages = false;
+	public static boolean maccOutput = false;
 
 	private static PrintWriter out; // Set by main to the Scanner's listing file.
 	private static Codegen codegen; // set by main

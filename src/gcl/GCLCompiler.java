@@ -59,9 +59,12 @@ public class GCLCompiler {
 					case 'M':
 						CompilerOptions.showMessages = true;
 						break;
+					case 'P':
+						CompilerOptions.maccOutput = true;
+						break;
 					default:
 						System.out.println("Invalid option "
-								+ args[i].charAt(j) + ": Only CMO allowed\n");
+								+ args[i].charAt(j) + ": Only CMOP allowed\n");
 						System.exit(1);
 					}
 		}
@@ -106,8 +109,7 @@ public class GCLCompiler {
 			}
 			break;
 			}
-			System.out.println("  <end of compilation of " +args[0] + ">.  "
-					+ errorMessage);
+			System.out.println("  <end of compilation of " +args[0] + ">.  " + errorMessage);
 			out.println("  <end of compilation of " +args[0] + ">.  " + errorMessage);
 			CompilerOptions.printAllocatedRegisters();
 			if (err.count > 0){

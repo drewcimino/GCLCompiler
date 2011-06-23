@@ -36,8 +36,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 
 	public void closeObjfile() {
-		try { objfile.close(); }
-		catch (IOException e) {	e.printStackTrace(); }
+		if(CompilerOptions.maccOutput){
+			try { objfile.close(); }
+			catch (IOException e) {	e.printStackTrace(); }	
+		}
 	}
 
 	/**
@@ -317,9 +319,10 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				}
 			}
 			codefile.println(instruction.samCode());
-			// TODO comment while testing sam code; uncomment while testing macc code.
-//			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
-//			catch (IOException e) { e.printStackTrace(); }
+			if (CompilerOptions.maccOutput){
+				try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
+				catch (IOException e) { e.printStackTrace(); }	
+			}
 		}
 	}
 
@@ -750,14 +753,16 @@ public class Codegen implements Mnemonic, CodegenConstants {
 			CompilerOptions.listCode = old;
 			System.exit(1);
 		}
-		try {
-			objfile = new FileOutputStream("OBJ");
-		} catch (IOException e) {
-			boolean old = CompilerOptions.listCode;
-			CompilerOptions.listCode = true;
-			CompilerOptions.listCode("File error creating OBJ: " + e);
-			CompilerOptions.listCode = old;
-			System.exit(1);
+		if(CompilerOptions.maccOutput){
+			try {
+				objfile = new FileOutputStream("OBJ");
+			} catch (IOException e) {
+				boolean old = CompilerOptions.listCode;
+				CompilerOptions.listCode = true;
+				CompilerOptions.listCode("File error creating OBJ: " + e);
+				CompilerOptions.listCode = old;
+				System.exit(1);
+			}	
 		}
 		registers = new RegisterSet();
 		savedRegisters.clear();
