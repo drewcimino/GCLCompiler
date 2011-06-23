@@ -2078,7 +2078,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return;
 		}
 		Location expressionLocation = codegen.buildOperands(expression);
-		codegen.gen1Address(RDI, expressionLocation);
+		codegen.gen1AddressIO(RDI, expressionLocation);
 		// bounds check
 		if (expression.type() instanceof RangeType){
 			codegen.gen2Address(TRNG, codegen.loadRegister(expression), expression.type().expectRangeType(err).location());
@@ -2096,7 +2096,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		if (stringConstant instanceof GeneralError) {
 			return;
 		}
-		codegen.gen1Address(WRST, codegen.buildOperands(stringConstant));
+		codegen.gen1AddressIO(WRST, codegen.buildOperands(stringConstant));
 	}
 	
 	/***************************************************************************
@@ -2114,7 +2114,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 			return;
 		}
 		Location expressionLocation = codegen.buildOperands(expression);
-		codegen.gen1Address(WRI, expressionLocation);
+		codegen.gen1AddressIO(WRI, expressionLocation);
 		codegen.freeTemp(expressionLocation);
 	}
 
@@ -2123,7 +2123,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 **************************************************************************/
 	void genEol() {
 		
-		codegen.gen0Address(WRNL);
+		codegen.gen0AddressIO(WRNL);
 	}
 
 	/***************************************************************************

@@ -1659,6 +1659,7 @@ public class Macc3 {
 						shortToMemoryWord((short)i, addr);
 					}
 				} catch (Exception e) {
+					System.out.println(e.getMessage()); // TODO debug
 					System.out.println(" Could not read. Exiting");
 					System.exit(1);
 				}

@@ -316,6 +316,12 @@ public class Codegen implements Mnemonic, CodegenConstants {
 				}
 			}
 			codefile.println(instruction.samCode());
+			// TODO macc debugging
+//			for (Byte b : toByteArray(instruction.maccCode(), instruction.maccSize())){
+//				System.out.print(b.toString() + ", ");
+//			}
+//			System.out.println();
+			//System.out.println(" - " + instruction.maccCode());
 			// TODO comment while testing sam code; uncomment while testing macc code.
 			try {objfile.write(toByteArray(instruction.maccCode(), instruction.maccSize()));}
 			catch (IOException e) { e.printStackTrace(); }
@@ -340,9 +346,18 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	public void gen0Address(final SamOp opcode) {
 		writeFiles(new ZeroAddress(opcode));
 	}
+	
+	/**
+	 * Generate a 0 address instruction for WRNL or RDNL
+	 *
+	 * @param opcode the operation code as defined in Mnemonic
+	 */
+	public void gen0AddressIO(final SamOp opcode) {
+		writeFiles(new ZeroAddressIO(opcode));
+	}
 
 	/**
-	 * Generate a 1 address instruction such as WRI
+	 * Generate a 1 address instruction
 	 *
 	 * @param opcode the operation code as defined in Mnemonic
 	 * @param mode a valid addressing mode for the operand of the instruction
@@ -351,6 +366,18 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	 */
 	public void gen1Address(final SamOp opcode, final Mode mode, final int base, final int displacement) {
 		writeFiles(new OneAddress(opcode, mode, base, displacement));
+	}
+	
+	/**
+	 * Generate a 1 address instruction for reads or writes
+	 *
+	 * @param opcode the operation code as defined in Mnemonic
+	 * @param mode a valid addressing mode for the operand of the instruction
+	 * @param base a register for the operand
+	 * @param displacement an offset for the operand
+	 */
+	public void gen1AddressIO(final SamOp opcode, final Location loc) {
+		writeFiles(new OneAddressIO(opcode, loc.mode, loc.base, loc.displacement));
 	}
 
 	/**
@@ -1012,14 +1039,18 @@ public class Codegen implements Mnemonic, CodegenConstants {
 	}
 	
 	/**
-	 * Assigns the binary form of value to bits.
+	 * Assigns the binary form of value to bits along with optional zeros at the end.
 	 * 
 	 * @param bits BitSet to modify.
 	 * @param value String value to be assigned to bits.
 	 */
-	private static void setBits(BitSet bits, String value){
-		for(int i = 0; i < value.length(); i++){
-			setBits(bits, (i)*8, (i+1)*8, value.charAt(value.length()-i-1));
+	private static void setBits(BitSet bits, StringConstant value){
+		int bitSetIndex = 0;
+		for(;bitSetIndex < value.size() - value.maccString().length(); bitSetIndex++){
+			setBits(bits, bitSetIndex*8, (bitSetIndex+1)*8-1, 0);
+		}
+		for(int stringIndex = 0; stringIndex < value.maccString().length(); stringIndex++, bitSetIndex++){
+			setBits(bits, bitSetIndex*8, (bitSetIndex+1)*8-1, value.maccString().charAt(value.maccString().length()-stringIndex-1));
 		}
 	}
 
@@ -1087,8 +1118,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public abstract int maccSize();
 	}
 	
-	/** Instruction which references a label.<br/>
-	 *  Must define an offset in the second pass. */
+	/** Instruction which references a label.<br/>Must define an offset in the second pass. */
 	interface LabelReference{
 		
 		/**
@@ -1164,7 +1194,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		private final int allocatedSize;
 
 		/**
-		 * @param allocatedSize in 2 word (4 byte) intervals.
+		 * @param allocatedSize in 1 byte intervals.
 		 */
 		public Skip(final int allocatedSize){
 			this.allocatedSize = allocatedSize;
@@ -1172,17 +1202,17 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public BitSet maccCode() {
-			return new BitSet(allocatedSize * 32);// TODO is this number right?
+			return new BitSet(allocatedSize * 8);
 		}
 
 		@Override
 		public int maccSize() {
-			return (allocatedSize * 2);// TODO is this number right?
+			return (allocatedSize);
 		}
 
 		@Override
 		public String samCode() {
-			return (SKIP_DIRECTIVE.samCodeString() + allocatedSize);// TODO is this number right?
+			return (SKIP_DIRECTIVE.samCodeString() + allocatedSize);
 		}
 	}
 	
@@ -1199,8 +1229,8 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(value.size()*8);
-			setBits(maccCode, value.maccString());
+			BitSet maccCode = new BitSet(maccSize()*8);
+			setBits(maccCode, value);
 			return maccCode;
 		}
 
@@ -1351,14 +1381,57 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
-			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), mode.samCode(), base, displacement);
+			BitSet maccCode = new BitSet(maccSize()*8);
+			if(maccSize() == 4){
+				setBits(maccCode, opcode.opCodeValue(), UNUSED, mode.samCode(), base, displacement);
+			}
+			else{
+				setBits(maccCode, opcode.opCodeValue(), UNUSED, mode.samCode(), base);
+			}
 			return maccCode;
 		}
 
 		@Override
 		public int maccSize() {
 			return mode.bytesRequired();
+		}
+	}
+	
+	/** Input Output Instruction with one operand. */
+	class OneAddressIO implements Instruction{
+
+		private final SamOp opcode;
+		private final Mode mode;
+		private final int base;
+		private final int displacement;
+		
+		public OneAddressIO(final SamOp opcode, final Mode mode, final int base, final int displacement){
+			this.opcode = opcode;
+			this.mode = mode;
+			this.base = base;
+			this.displacement = displacement;
+		}
+		
+		@Override
+		public BitSet maccCode() {
+			BitSet maccCode = new BitSet(maccSize()*8);
+			if(maccSize() == 4){
+				setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), mode.samCode(), base, displacement);
+			}
+			else{
+				setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), mode.samCode(), base);
+			}
+			return maccCode;
+		}
+
+		@Override
+		public int maccSize() {
+			return mode.bytesRequired();
+		}
+
+		@Override
+		public String samCode(){
+			return (opcode.samCodeString() + mode.address(base, displacement));
 		}
 	}
 	
@@ -1379,8 +1452,9 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
 			setBits(maccCode, opcode.opCodeValue(), opcode.specifier(), DMEM.samCode(), UNUSED, offset); // TODO DMEM or 0?
-			maccCode.set(20);
+			maccCode.set(20); // TODO check again
 		}
+		
 		@Override
 		public String label(){
 			return label;
@@ -1462,8 +1536,13 @@ public class Codegen implements Mnemonic, CodegenConstants {
 
 		@Override
 		public BitSet maccCode() {
-			BitSet maccCode = new BitSet(mode.bytesRequired()*8);
-			setBits(maccCode, opcode.opCodeValue(), reg, mode.samCode(), base, displacement);
+			BitSet maccCode = new BitSet(maccSize()*8);
+			if(maccSize() == 4){
+				setBits(maccCode, opcode.opCodeValue(), reg, mode.samCode(), base, displacement);
+			}
+			else{
+				setBits(maccCode, opcode.opCodeValue(), reg, mode.samCode(), base);
+			}
 			return maccCode;
 		}
 
@@ -1491,7 +1570,7 @@ public class Codegen implements Mnemonic, CodegenConstants {
 		@Override
 		public void defineOffset(int offset){
 			maccCode = new BitSet(32);
-			setBits(maccCode, opcode.opCodeValue(), reg, DMEM.samCode(), UNUSED, offset);
+			setBits(maccCode, opcode.opCodeValue(), reg, DMEM.samCode(), UNUSED, offset); // DMEM?
 		}
 
 		@Override
