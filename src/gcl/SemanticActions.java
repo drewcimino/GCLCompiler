@@ -781,7 +781,7 @@ abstract class Loader implements CodegenConstants, Mnemonic{
 		if(type.isCompatible(other.type())){
 			return true;
 		}
-		err.semanticError(GCLError.TYPE_MISMATCH, "Expected: " + type.toString());
+		err.semanticError(GCLError.INVALID_TYPE, "Expected: " + type.toString());
 		return false;
 	}
 }
@@ -1829,10 +1829,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 
 	/***************************************************************************
 	 * Auxiliary Report that the identifier is already
-	 * defined in this scope if it is. Called from most declarations.
+	 * defined in this scope if it is. Called from most declarations
 	 * 
 	 * @param ID an Identifier
-	 * @param scope the symbol table used to find the identifier.
+	 * @param scope the symbol table used to find the identifier
 	 **************************************************************************/
 	private void complainIfDefinedHere(final SymbolTable scope, final Identifier id) {
 		
@@ -1844,7 +1844,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 
 	/***************************************************************************
 	 * auxiliary moveBlock moves a block (using blocktransfer)
-	 * from source to dest. Both source and destination refer to expr entries .
+	 * from source to dest. Both source and destination refer to expr entries
 	 **************************************************************************/
 	private void moveBlock(final Expression source, final Expression destination) {
 		
@@ -1868,7 +1868,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	/***************************************************************************
 	 * auxiliary moveBlock moves a block (using blocktransfer)
 	 * from source to dest. Source refers to an expr entry. mode, base, and
-	 * displacement give the dest.
+	 * displacement give the dest
 	 **************************************************************************/
 	private void moveBlock(final Expression source, final Mode mode, final int base, final int displacement) {
 		
@@ -1888,7 +1888,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	/***************************************************************************
 	 * auxiliary moveBlock moves a block (using blocktransfer)
 	 * from source to destination. Source is given by mode, base, displacement
-	 * and destination refers to an expr entry .
+	 * and destination refers to an expr entry
 	 **************************************************************************/
 	private void moveBlock(final Mode mode, final int base, final int displacement, final Expression destination) {
 		
@@ -1991,7 +1991,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * 
 	 * @param scope the current scope
 	 * @param ID and identifier to be transformed
-	 * @return the semantic item that the identifier represents.
+	 * @return the semantic item that the identifier represents
 	 **************************************************************************/
 	SemanticItem semanticValue(final SymbolTable scope, final Identifier id) {
 		
@@ -2010,7 +2010,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	 * @param scope the current scope
 	 * @param module the module which has access to ID
 	 * @param ID and identifier to be transformed
-	 * @return the semantic item that the identifier represents.
+	 * @return the semantic item that the identifier represents
 	 **************************************************************************/
 	SemanticItem semanticValue(final SymbolTable scope, final ModuleRecord module, final Identifier id) {
 		
@@ -2027,7 +2027,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code for an assignment. Copy the RHS expressions to the corresponding LHS variables.
+	 * Generate code for an assignment. Copy the RHS expressions to the corresponding LHS variables
 	 * 
 	 * @param expressions an assignment record with two expr vectors (RHSs, LHSs )
 	 **************************************************************************/
@@ -2086,9 +2086,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code to write a StringConstant.
+	 * Generate code to write a StringConstant
 	 * 
-	 * @param stringConstant value to be printed.
+	 * @param stringConstant value to be printed
 	 **************************************************************************/
 	void writeString(final StringConstant stringConstant) {
 		
@@ -2099,7 +2099,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generate code to write an integer expression.
+	 * Generate code to write an integer expression
 	 * 
 	 * @param expression (integer) expression
 	 **************************************************************************/
@@ -2118,7 +2118,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code to write an end of line mark.
+	 * Generate code to write an end of line mark
 	 **************************************************************************/
 	void genEol() {
 		
@@ -2126,7 +2126,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code to add two integer expressions. Result in Register.
+	 * Generate code to add two integer expressions<br/>Result in Register
 	 * 
 	 * @param left an expression (lhs)Must be integer
 	 * @param op an add operator
@@ -2149,7 +2149,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code to negate an integer expression. Result in Register.
+	 * Generate code to negate an integer expression<br/>Result in Register
 	 * 
 	 * @param expression expression to be negated -must be integer
 	 * @return result expression -integer (in register)
@@ -2174,7 +2174,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generate code to negate a boolean expression. Result in Register.
+	 * Generate code to negate a boolean expression<br/>Result in Register
 	 * 
 	 * @param booleanExpression expression to be negated -must be boolean
 	 * @return result expression -boolean (in register)
@@ -2199,7 +2199,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code to multiply two integer expressions. Result in Register.
+	 * Generate code to multiply two integer expressions<br/>Result in Register
 	 * 
 	 * @param left an expression (lhs)Must be integer
 	 * @param op a multiplicative operator
@@ -2226,7 +2226,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generate code to calculate left modulo right. Result in Register.
+	 * Generate code to calculate left modulo right<br/>Result in Register
 	 * 
 	 * @param left an expression (lhs)Must be integer
 	 * @param right an expression (rhs)Must be integer
@@ -2248,7 +2248,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generate code to and two boolean expressions. Result in Register.
+	 * Generate code to and two boolean expressions<br/>Result in Register
 	 * 
 	 * @param left an expression (lhs)Must be boolean
 	 * @param right an expression (rhs)Must be boolean
@@ -2271,7 +2271,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generate code to or two boolean expressions. Result in Register.
+	 * Generate code to or two boolean expressions<br/>Result in Register
 	 * 
 	 * @param left an expression (lhs)Must be boolean
 	 * @param right an expression (rhs)Must be boolean
@@ -2294,7 +2294,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate code to compare two expressions. Result (0-1) in Register.
+	 * Generate code to compare two expressions<br/>Result (0-1) in Register
 	 * 
 	 * @param left an expression (lhs)
 	 * @param op a relational operator
@@ -2325,7 +2325,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generate code to compare two block expressions. Result (0-1) in Register.
+	 * Generate code to compare two block expressions<br/>Result (0-1) in Register
 	 * 
 	 * @param left an expression (lhs)
 	 * @param op a relational operator
@@ -2343,9 +2343,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Create a label record with the outlabel for an IF statement.
+	 * Create a label record with the outlabel for an IF statement
 	 * 
-	 * @return GCRecord entry with two label slots for this statement.
+	 * @return GCRecord entry with two label slots for this statement
 	 **************************************************************************/
 	GCRecord startIf() {
 		
@@ -2353,9 +2353,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate the final label for an IF. (Halt if we fall through to here).
+	 * Generate the final label for an IF. (Halt if we fall through to here)
 	 * 
-	 * @param entry GCRecord holding the labels for this statement.
+	 * @param entry GCRecord holding the labels for this statement
 	 **************************************************************************/
 	void endIf(final GCRecord entry) {
 		
@@ -2364,10 +2364,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Create a label record with the outlabel for a DO statement.
-	 * Generate the out label at the beginning.
+	 * Create a label record with the outlabel for a DO statement<br/>
+	 * Generate the out label at the beginning
 	 * 
-	 * @return GCRecord entry with two label slots for this statement.
+	 * @return GCRecord entry with two label slots for this statement
 	 **************************************************************************/
 	GCRecord startDo() {
 		
@@ -2377,10 +2377,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generates code to begin a forall loop.
+	 * Generates code to begin a forall loop
 	 * 
-	 * @param control expression over which the loop iterates. Must be RangeType.
-	 * @return ForRecord entry with a counter and a label for this statement.
+	 * @param control expression over which the loop iterates - must be RangeType
+	 * @return ForRecord entry with a counter and a label for this statement
 	 **************************************************************************/
 	ForRecord startForall(VariableExpression control) {
 		
@@ -2397,9 +2397,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Generates code to end a forall loop.
+	 * Generates code to end a forall loop
 	 * 
-	 * @param entry ForRecord holding the counter and label for this statement.
+	 * @param entry ForRecord holding the counter and label for this statement
 	 **************************************************************************/
 	void endForall(final ForRecord entry) {
 		
@@ -2415,9 +2415,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * If the expression represents true, jump to the next else part.
+	 * If the expression represents true, jump to the next else part
 	 * 
-	 * @param expression Expression to be tested: must be boolean
+	 * @param expression Expression to be tested - must be boolean
 	 * @param entry GCRecord with the associated labels. This is updated
 	 **************************************************************************/
 	void ifTest(final Expression expression, final GCRecord entry) {
@@ -2438,7 +2438,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Generate a jump to the out label and insert the next else label.
+	 * Generate a jump to the out label and insert the next else label
 	 * 
 	 * @param entry GCRecord with the labels
 	 **************************************************************************/
@@ -2449,10 +2449,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Create a tuple from a list of expressions Both the type and the value must be created.
+	 * Create a tuple from a list of expressions Both the type and the value must be created
 	 * 
 	 * @param tupleFields an expression list with the fields of the tuple
-	 * @return an expression representing the tuple value as a whole.
+	 * @return an expression representing the tuple value as a whole
 	 **************************************************************************/
 	Expression buildTuple(final ExpressionList tupleFields) {
 		
@@ -2476,12 +2476,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	/***************************************************************************
 	 * Enter the identifier into the symbol table, marking it as a variable of
 	 * the given type. This method handles global variables as well as local
-	 * variables and procedure parameters.
+	 * variables and procedure parameters
 	 * 
 	 * @param scope the current symbol table
 	 * @param type the type to be of the variable being defined
 	 * @param ID identifier to be defined
-	 * @param procParam the kind of procedure param it is (if any).
+	 * @param procParam the kind of procedure param it is (if any)
 	 **************************************************************************/
 	void declareVariable(final SymbolTable scope, final TypeDescriptor type, final Identifier id, final ParameterKind procParam) {
 		
@@ -2502,11 +2502,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Enter the identifier into the symbol table along with its constant expression.
+	 * Enter the identifier into the symbol table along with its constant expression
 	 * 
-	 * @param scope SymbolTable into which this entry should be added.
-	 * @param id Identifier of this constant expression.
-	 * @param expression The defined constant expression.
+	 * @param scope SymbolTable into which this entry should be added
+	 * @param id Identifier of this constant expression
+	 * @param expression The defined constant expression
 	 **************************************************************************/
 	void declareConstant(final SymbolTable scope, final Identifier id, final ConstantExpression expression) {
 		
@@ -2516,11 +2516,11 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Enter id into the symbol table, associating it with the given type.
+	 * Enter id into the symbol table, associating it with the given type
 	 * 
 	 * @param scope the current symbol table
-	 * @param type TypeDescriptor to be entered with id.
-	 * @param id Identifier representing type in the symbol table.
+	 * @param type TypeDescriptor to be entered with id
+	 * @param id Identifier representing type in the symbol table
 	 **************************************************************************/
 	void declareTypeDefinition(final SymbolTable scope, final TypeDescriptor type, final Identifier id){
 		
@@ -2530,12 +2530,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Declares a new procedure with its own scope, entering it into the carrier for its tuple.
+	 * Declares a new procedure with its own scope, entering it into the carrier for its tuple
 	 * 
-	 * @param procedureId identifier of the new procedure.
-	 * @param carrier TypeList used to build this procedure's tuple.
-	 * @param outerScope The scope where this procedure's tuple is defined.
-	 * @return The new scope of the procedure.
+	 * @param procedureId identifier of the new procedure
+	 * @param carrier TypeList used to build this procedure's tuple
+	 * @param outerScope The scope where this procedure's tuple is defined
+	 * @return The new scope of the procedure
 	 **************************************************************************/
 	SymbolTable openProcedureDeclaration(final Identifier procedureId, TypeList carrier, final SymbolTable outerScope){
 		
@@ -2547,7 +2547,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Closes procedure declaration and returns to the previous scope.
+	 * Closes procedure declaration and returns to the previous scope
 	 **************************************************************************/
 	void closeProcedureDeclaration(){
 		
@@ -2615,20 +2615,17 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Calls a procedure with a list arguments.
+	 * Calls a procedure with a list arguments
 	 * 
-	 * @param procedure procedure to be called.
-	 * @param arguments
+	 * @param tuple instance which calls the procedure
+	 * @param procedure procedure to be called
+	 * @param arguments list of expression to be passed as arguments
 	 **************************************************************************/
 	void callProcedure(final Expression tuple, final Procedure procedure, final ExpressionList arguments){
 		
 		if(tuple instanceof GeneralError || procedure instanceof GeneralError){
 			return;
 		}
-		/*if(!procedure.defined()){
-			err.semanticError(GCLError.PROCEDURE_NOT_DEFINED); 
-			return;
-		}*/
 
 		// Define 'this'
 		int tupleReg = codegen.loadAddress(tuple);
@@ -2657,7 +2654,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * returns a value from a procedure call.
+	 * returns a value from a procedure call
 	 **************************************************************************/
 	void doReturn(){
 		
@@ -2730,12 +2727,12 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 		// complain on type mismatch
 		if(!lowerBound.type().isCompatible(baseType)){
 			valid = false;
-			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as lower bound");
+			err.semanticError(GCLError.INVALID_TYPE, "Expected: " + baseType.toString() + " as lower bound");
 		}
 		// complain on type mismatch
 		if(!upperBound.type().isCompatible(baseType)){
 			valid = false;
-			err.semanticError(GCLError.TYPE_MISMATCH, baseType.toString() + " expected as upper bound");
+			err.semanticError(GCLError.INVALID_TYPE, "Expected: " + baseType.toString() + " as upper bound");
 		}
 		// complain lower > upper
 		if(lowerBound.value() > upperBound.value()){
@@ -2823,10 +2820,10 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * tuple field.
+	 * tuple field
 	 * 
-	 * @param tupleExpression an expression of type tuple.
-	 * @param fieldName identifier of a tuple member.
+	 * @param tupleExpression an expression of type tuple
+	 * @param fieldName identifier of a tuple member
 	 * @return tupleExpression@fieldName
 	 **************************************************************************/
 	Expression tupleComponent(VariableExpression tupleExpression, Identifier fieldName){
@@ -2873,7 +2870,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Complain if invalid spelling.
+	 * Complain if invalid spelling
 	 **************************************************************************/
 	void checkIdentifierSpelling(final String identifier){
 		
@@ -2883,21 +2880,13 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 	
 	/***************************************************************************
-	 * Inserts a comment in the listing file.
-	 * TODO remove after debugging.
-	 **************************************************************************/
-	void insertComment(String message){
-		
-		codegen.genCodeComment(message);
-	}
-	
-	/***************************************************************************
 	 * Retrieves the tuple scope and complains if it is not in the current module
 	 *  
 	 * @param tupleTypeOrInstance Either a TupleType or an expression with type, TupleType
 	 * @return the tuple scope of either a tuple type or instance
 	 **************************************************************************/
 	private SymbolTable tupleScope(SemanticItem tupleTypeOrInstance){
+		
 		if(tupleTypeOrInstance instanceof Expression){
 			return tupleTypeOrInstance.expectExpression(err)
 								      .expectVariableExpression(err)
@@ -2915,7 +2904,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Set up the registers and other run time initializations.
+	 * Set up the registers and other run time initializations
 	 **************************************************************************/
 	void startCode() {
 		
@@ -2923,8 +2912,7 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Write out the termination code, Including constant defs and global
-	 * variables.
+	 * Write out the termination code, Including constant defs and global variables
 	 **************************************************************************/
 	void finishCode() {
 		
@@ -2932,9 +2920,9 @@ public class SemanticActions implements Mnemonic, CodegenConstants {
 	}
 
 	/***************************************************************************
-	 * Get a reference to the object that maintains the current semantic (procedure nesting) level.
+	 * Get a reference to the object that maintains the current semantic (procedure nesting) level
 	 * 
-	 * @return the current semantic level object.
+	 * @return the current semantic level object
 	 **************************************************************************/
 	SemanticLevel currentLevel() {
 		
