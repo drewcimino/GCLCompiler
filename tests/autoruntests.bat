@@ -7,10 +7,12 @@ java -cp . gcl.GCLCompiler ..\tests\test0.fix ..\tests\results\test0fixlist.txt
 java -cp . macc.Macc3 <..\tests\test0.dat >..\tests\results\test0fix.result
 java -cp . gcl.GCLCompiler ..\tests\test1_1 ..\tests\results\test1_1list.txt 
 ::..\sam3-pc.exe
-java -cp . macc.Macc3 <..\tests\test1_1.dat >..\tests\results\test1_1.result
+..\macc3-pc.exe <..\tests\test1_1.dat >..\tests\results\test1_1.result
+::java -cp . macc.Macc3 <..\tests\test1_1.dat >..\tests\results\test1_1.result
 java -cp . gcl.GCLCompiler ..\tests\test1_2 ..\tests\results\test1_2list.txt 
 ::..\sam3-pc.exe
-java -cp . macc.Macc3 <..\tests\test1_1.dat >..\tests\results\test1_2.result
+..\macc3-pc.exe <..\tests\test1_1.dat >..\tests\results\test1_2.result
+::java -cp . macc.Macc3 <..\tests\test1_1.dat >..\tests\results\test1_2.result
 java -cp . gcl.GCLCompiler ..\tests\test2 ..\tests\results\test2list.txt 
 ::..\sam3-pc.exe
 java -cp . macc.Macc3  >..\tests\results\test2.result
@@ -88,8 +90,9 @@ java -cp . macc.Macc3  <..\tests\test11.dat >..\tests\results\test11_9.result
 java -cp . gcl.GCLCompiler ..\tests\test12 ..\tests\results\test12list.txt 
 ::..\sam3-pc.exe
 java -cp . macc.Macc3   >..\tests\results\test12.result
-java -cp . gcl.GCLCompiler ..\tests\test12_1 ..\tests\results\test12_1list.txt 
+java -cp . gcl.GCLCompiler ..\tests\test12_1 ..\tests\results\test12_1list.txt
 ::..\sam3-pc.exe
+java -cp . macc.Macc3   >..\tests\results\test12_1.result 
 java -cp . gcl.GCLCompiler ..\tests\test12_2 ..\tests\results\test12_2list.txt 
 java -cp . gcl.GCLCompiler ..\tests\test13 ..\tests\results\test13list.txt 
 ::..\sam3-pc.exe
@@ -113,7 +116,7 @@ java -cp . gcl.GCLCompiler ..\tests\test16_1 ..\tests\results\test16_1list.txt
 ::..\sam3-pc.exe
 java -cp . gcl.GCLCompiler ..\tests\test16_2 ..\tests\results\test16_2list.txt 
 ::..\sam3-pc.exe
-java -cp . macc.Macc3  <..\tests\test16_2.dat >..\tests\results\test16_2.result
+java -cp . macc.Macc3 <..\tests\test16_2.dat >..\tests\results\test16_2.result
 java -cp . gcl.GCLCompiler ..\tests\test16_3 ..\tests\results\test16_3list.txt 
 ::..\sam3-pc.exe
 java -cp . macc.Macc3  >..\tests\results\test16_3.result
@@ -128,7 +131,7 @@ java -cp . gcl.GCLCompiler ..\tests\test17_2 ..\tests\results\test17_2list.txt
 java -cp . macc.Macc3  >..\tests\results\test17_2.result
 java -cp . gcl.GCLCompiler ..\tests\test17_3 ..\tests\results\test17_3list.txt 
 ::..\sam3-pc.exe
-java -cp . macc.Macc3  <..\tests\test17_3.dat >..\tests\results\test17_3.result
+java -cp . macc.Macc3 <..\tests\test17_3.dat >..\tests\results\test17_3.result
 java -cp . gcl.GCLCompiler ..\tests\test17_4 ..\tests\results\test17_4list.txt 
 java -cp . gcl.GCLCompiler ..\tests\test18 ..\tests\results\test18list.txt 
 ::..\sam3-pc.exe
@@ -148,6 +151,9 @@ java -cp . macc.Macc3  >..\tests\results\test18_3.result
 java -cp . gcl.GCLCompiler ..\tests\test19 ..\tests\results\test19list.txt 
 ::..\sam3-pc.exe
 java -cp . macc.Macc3  >..\tests\results\test19.result
+::java -cp . gcl.GCLCompiler ..\tests\test19x ..\tests\results\test19xlist.txt 
+::::..\sam3-pc.exe
+::java -cp . macc.Macc3  >..\tests\results\test19x.result
 java -cp . gcl.GCLCompiler ..\tests\test19_1 ..\tests\results\test19_1list.txt 
 ::..\sam3-pc.exe
 java -cp . macc.Macc3  >..\tests\results\test19_1.result
@@ -157,4 +163,3 @@ java -cp . gcl.GCLCompiler ..\tests\test20_1 ..\tests\results\test20_1list.txt
 ::..\sam3-pc.exe
 java -cp . macc.Macc3  >..\tests\results\test20_1.result
 java -cp . gcl.GCLCompiler ..\tests\test20_2 ..\tests\results\test20_2list.txt 
-::..\sam3-pc.exe
